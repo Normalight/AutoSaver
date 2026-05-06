@@ -67,6 +67,18 @@ namespace AutoSaver.Services
             set => Write("meta", "version", value);
         }
 
+        public static void EnsureDefaults()
+        {
+            if (File.Exists(IniPath)) return;
+
+            Write("meta",   "version",                  "");
+            Write("global", "theme",                    "dark");
+            Write("global", "check_interval_sec",       "30");
+            Write("global", "start_with_windows",       "false");
+            Write("global", "minimize_to_tray_on_close","true");
+            Write("global", "show_notifications",       "true");
+        }
+
         public static List<ProgramItem> LoadPrograms()
         {
             var programs = new List<ProgramItem>();

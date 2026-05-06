@@ -41,6 +41,8 @@ namespace AutoSaver
                 return;
             }
 
+            ConfigService.EnsureDefaults();
+
             var iniVersion = ConfigService.AppVersion;
             if (!string.IsNullOrWhiteSpace(iniVersion))
                 Version = iniVersion;
