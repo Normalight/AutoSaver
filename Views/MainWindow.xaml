@@ -72,10 +72,20 @@
                          SelectionChanged="OnSelectionChanged">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource CardBackground}"
-                                        BorderBrush="{DynamicResource CardBorderBrush}"
-                                        BorderThickness="1" CornerRadius="8"
+                                <Border BorderThickness="1" CornerRadius="8"
                                         Padding="10,8" Margin="0,0,0,6">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentColor}"/>
+                                                    <Setter Property="Background" Value="{DynamicResource BgTertiary}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
