@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AutoSaver.Models;
 
@@ -15,6 +16,7 @@ namespace AutoSaver.Services
     /// <remarks>
     /// 代理：<c>NO_PROXY</c> → 直连；<c>HTTPS_PROXY</c>/<c>HTTP_PROXY</c>/<c>ALL_PROXY</c>；
     /// 再回退 <see cref="WebRequest.GetSystemWebProxy"/>。仅 HTTP/HTTPS 代理。
+    /// 发行说明：从 <c>github.com/.../releases/tag/...</c> 页面 HTML 中解析 <c>markdown-body</c>，不依赖本地文件。
     /// </remarks>
     public static class UpdateService
     {
@@ -78,6 +80,13 @@ namespace AutoSaver.Services
 
                 if (!string.IsNullOrEmpty(result.LatestVersion))
                     result.HasUpdate = IsNewer(result.LatestVersion, current);
+
+                if (!string.IsNullOrEmpty(result.ReleaseUrl))
+                {
+                    var notes = FetchReleaseNotesFromReleasePage(result.ReleaseUrl);
+                    if (!string.IsNullOrEmpty(notes))
+                        result.ReleaseNotes = notes;
+                }
 
                 result.ErrorMessage = "";
             }
@@ -178,6 +187,152 @@ namespace AutoSaver.Services
                 core.IndexOf("proxy", StringComparison.OrdinalIgnoreCase) >= 0)
                 return core + "（若使用代理，请确认已登录或设置 HTTPS_PROXY）";
             return core;
+        }
+
+        /// <summary>构建某版本的 GitHub 发行页 URL（tag 通常为 <c>v1.2.3</c>）。</summary>
+        public static string BuildReleaseTagPageUrl(string semanticVersion)
+        {
+            if (string.IsNullOrWhiteSpace(semanticVersion))
+                return "";
+
+            var t = semanticVersion.Trim();
+            if (!t.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                t = "v" + t;
+
+            return "https://github.com/Normalight/AutoSaver/releases/tag/" + Uri.EscapeDataString(t);
+        }
+
+        /// <summary>GET 对应 tag 的发行页并解析正文（失败返回空串）。</summary>
+        public static string FetchReleaseNotesForSemanticVersion(string semanticVersion)
+        {
+            var url = BuildReleaseTagPageUrl(semanticVersion);
+            return string.IsNullOrEmpty(url) ? "" : FetchReleaseNotesFromReleasePage(url);
+        }
+
+        /// <summary>
+        /// GET 发行页 HTML，将 <c>markdown-body</c> 区域转为纯文本（无 NuGet、不调用 REST API）。
+        /// </summary>
+        public static string FetchReleaseNotesFromReleasePage(string releasePageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(releasePageUrl))
+                return "";
+
+            try
+            {
+                var uri = new Uri(releasePageUrl, UriKind.Absolute);
+                var req = (HttpWebRequest)WebRequest.Create(uri);
+                req.Method = "GET";
+                req.UserAgent = UserAgent;
+                req.Timeout = 45_000;
+                req.ReadWriteTimeout = 45_000;
+                req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                ConfigureProxy(req, uri);
+
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                {
+                    if (resp.StatusCode != HttpStatusCode.OK)
+                        return "";
+
+                    using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                    {
+                        var html = sr.ReadToEnd();
+                        var fragment = ExtractMarkdownBodyInnerHtml(html);
+                        if (string.IsNullOrWhiteSpace(fragment))
+                            fragment = ExtractMarkdownBodyFallback(html);
+
+                        return HtmlFragmentToPlainText(fragment);
+                    }
+                }
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        /// <summary>定位 GitHub 渲染的正文容器（含嵌套 div）。</summary>
+        private static string ExtractMarkdownBodyInnerHtml(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return "";
+
+            var key = "markdown-body";
+            var mb = html.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+            if (mb < 0)
+                return "";
+
+            var divOpen = html.LastIndexOf("<div", mb, StringComparison.OrdinalIgnoreCase);
+            if (divOpen < 0 || mb - divOpen > 400)
+                return "";
+
+            var gt = html.IndexOf('>', divOpen);
+            if (gt < 0)
+                return "";
+
+            var contentStart = gt + 1;
+            var depth = 1;
+            var pos = contentStart;
+
+            while (pos < html.Length && depth > 0)
+            {
+                var nextOpen = IndexOfIgnoreCase(html, "<div", pos);
+                var nextClose = IndexOfIgnoreCase(html, "</div>", pos);
+
+                if (nextClose < 0)
+                    break;
+
+                if (nextOpen >= 0 && nextOpen < nextClose)
+                {
+                    depth++;
+                    pos = nextOpen + 4;
+                }
+                else
+                {
+                    depth--;
+                    if (depth == 0)
+                        return html.Substring(contentStart, nextClose - contentStart);
+
+                    pos = nextClose + 6;
+                }
+            }
+
+            return "";
+        }
+
+        private static int IndexOfIgnoreCase(string s, string needle, int start)
+        {
+            return s.IndexOf(needle, start, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>结构变更时的兜底：匹配第一个带 markdown-body 的 div 内层。</summary>
+        private static string ExtractMarkdownBodyFallback(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return "";
+
+            var m = Regex.Match(
+                html,
+                @"<div[^>]*markdown-body[^>]*>([\s\S]*?)</div>\s*</div>",
+                RegexOptions.IgnoreCase);
+
+            return m.Success ? m.Groups[1].Value : "";
+        }
+
+        private static string HtmlFragmentToPlainText(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                return "";
+
+            var s = WebUtility.HtmlDecode(html);
+            s = Regex.Replace(s, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
+            s = Regex.Replace(s, @"</h[1-6]>", "\n\n", RegexOptions.IgnoreCase);
+            s = Regex.Replace(s, @"</p>", "\n\n", RegexOptions.IgnoreCase);
+            s = Regex.Replace(s, @"</li>", "\n", RegexOptions.IgnoreCase);
+            s = Regex.Replace(s, @"<li[^>]*>", "• ", RegexOptions.IgnoreCase);
+            s = Regex.Replace(s, @"<[^>]+>", "");
+            s = Regex.Replace(s, @"[ \t]+\r?\n", "\n");
+            s = Regex.Replace(s, @"\r?\n{3,}", "\n\n");
+            return s.Trim();
         }
 
         /// <summary>

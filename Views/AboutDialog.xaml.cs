@@ -33,6 +33,21 @@ namespace AutoSaver.Views
             ApplyUpdateResult(app.GetLastUpdateCheckResult(), app.IsCheckingUpdates());
         }
 
+        /// <summary>启动后从 GitHub 拉取当前版本发行说明完成时由 <see cref="App"/> 调用。</summary>
+        internal void ApplyPendingNotesFromGitHub(string notes)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+                return;
+
+            if (_currentResult != null && !string.IsNullOrWhiteSpace(_currentResult.ReleaseNotes))
+                return;
+
+            if (_currentResult != null && _currentResult.HasUpdate)
+                return;
+
+            ReleaseNotesText.Text = notes;
+        }
+
         private void ApplyUpdateResult(UpdateCheckResult result, bool isChecking)
         {
             _currentResult = result ?? new UpdateCheckResult { CurrentVersion = App.Version, ReleaseNotes = App.CurrentReleaseNotes };

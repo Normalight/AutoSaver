@@ -46,7 +46,6 @@ Source: "..\bin\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; Ship icon from repo (MSBuild may not copy Content items to output on some CI runners).
 Source: "..\Resources\app-icon.ico"; DestDir: "{app}"; DestName: "app-icon.ico"; Flags: ignoreversion
 Source: "..\bin\Release\VERSION"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\bin\Release\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app-icon.ico"

@@ -5,6 +5,15 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.12] - 2026-05-07
+
+### Changed
+- **发行说明**：运行时已 **不再附带或读取 `CHANGELOG.md`**；改为 **GET** `github.com/Normalight/AutoSaver/releases/tag/v{X.Y.Z}` 页面，从 HTML 中的 **`markdown-body`** 解析正文（与更新检查同源代理/TLS 逻辑）。
+- **启动**：后台拉取 **当前版本** 对应发行页说明，填入「关于」并写入缓存；若窗口已打开则由 **`ApplyPendingNotesFromGitHub`** 刷新。
+
+### Removed
+- **`ChangelogService`** 及 **`CHANGELOG.md` CopyToOutputDirectory**；Inno 与 Portal zip 不再打包 **`CHANGELOG.md`**（仓库根 **`CHANGELOG.md`** 仍保留，仅用于 CI 提取 GitHub Release 描述）。
+
 ## [1.5.11] - 2026-05-07
 
 ### Changed

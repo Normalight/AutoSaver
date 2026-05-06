@@ -56,7 +56,6 @@
     <Compile Include="Models\UpdateCheckResult.cs" />
     <Compile Include="Converters\ToggleConverters.cs" />
     <Compile Include="Services\ConfigService.cs" />
-    <Compile Include="Services\ChangelogService.cs" />
     <Compile Include="Services\WindowService.cs" />
     <Compile Include="Services\SaveScheduler.cs" />
     <Compile Include="Services\StartupService.cs" />
@@ -125,9 +124,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="VERSION">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="CHANGELOG.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

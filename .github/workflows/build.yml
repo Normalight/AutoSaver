@@ -77,8 +77,7 @@ jobs:
           Compress-Archive -Path @(
             "bin/Release/autosaver.exe",
             "bin/Release/app-icon.ico",
-            "bin/Release/VERSION",
-            "bin/Release/CHANGELOG.md"
+            "bin/Release/VERSION"
           ) -DestinationPath $zipPath -Force
 
       - name: Upload artifact

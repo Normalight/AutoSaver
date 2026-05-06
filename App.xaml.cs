@@ -56,11 +56,11 @@ namespace AutoSaver
             if (string.IsNullOrWhiteSpace(iniVersion))
                 ConfigService.AppVersion = Version;
 
-            CurrentReleaseNotes = ChangelogService.GetReleaseNotes(changelogPath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md"), version: Version);
+            CurrentReleaseNotes = "";
             _lastUpdateCheckResult = new UpdateCheckResult
             {
                 CurrentVersion = Version,
-                ReleaseNotes = CurrentReleaseNotes
+                ReleaseNotes = ""
             };
 
             // Theme must be first - applies to all windows
@@ -68,7 +68,30 @@ namespace AutoSaver
 
             _logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "autosaver.log");
             Log($"AutoSaver v{Version} starting");
-            Log($"Release notes loaded for v{Version}: {CurrentReleaseNotes.Length} characters");
+
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var notes = UpdateService.FetchReleaseNotesForSemanticVersion(Version);
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        CurrentReleaseNotes = notes ?? "";
+                        if (_lastUpdateCheckResult != null &&
+                            string.IsNullOrWhiteSpace(_lastUpdateCheckResult.ReleaseNotes))
+                            _lastUpdateCheckResult.ReleaseNotes = CurrentReleaseNotes;
+
+                        foreach (Window w in Windows)
+                        {
+                            if (w is Views.AboutDialog aboutDlg)
+                                aboutDlg.ApplyPendingNotesFromGitHub(CurrentReleaseNotes);
+                        }
+
+                        Log($"Release notes from GitHub for v{Version}: {CurrentReleaseNotes.Length} characters");
+                    }), DispatcherPriority.Background);
+                }
+                catch { }
+            });
 
             // Extract embedded icon to temp file for NotifyIcon
             ExtractIcon();
@@ -96,9 +119,7 @@ namespace AutoSaver
 
         public static string GetFallbackReleaseNotes(string version)
         {
-            return ChangelogService.GetReleaseNotes(
-                changelogPath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md"),
-                version: version);
+            return UpdateService.FetchReleaseNotesForSemanticVersion(version ?? "");
         }
 
         private static string GetAssemblyVersion()
@@ -340,7 +361,12 @@ namespace AutoSaver
                             ErrorMessage = task.Exception?.GetBaseException().Message ?? "检查更新失败。"
                         };
                     if (string.IsNullOrWhiteSpace(result.ReleaseNotes))
-                        result.ReleaseNotes = GetFallbackReleaseNotes(result.HasUpdate ? result.LatestVersion : Version);
+                    {
+                        var ver = !string.IsNullOrWhiteSpace(result.LatestVersion)
+                            ? result.LatestVersion
+                            : Version;
+                        result.ReleaseNotes = UpdateService.FetchReleaseNotesForSemanticVersion(ver);
+                    }
                     StoreUpdateCheckResult(result);
                     onCompleted?.Invoke(CloneUpdateResult(result));
                 });
