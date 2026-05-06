@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using AutoSaver.Models;
@@ -71,6 +72,22 @@ namespace AutoSaver.Services
         {
             if (File.Exists(IniPath)) return;
 
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream("AutoSaver.Resources.autosaver.default.ini"))
+                {
+                    if (stream != null)
+                    {
+                        using (var fs = new FileStream(IniPath, FileMode.Create, FileAccess.Write))
+                            stream.CopyTo(fs);
+                        return;
+                    }
+                }
+            }
+            catch { }
+
+            // fallback: write defaults manually if embedded resource unavailable
             Write("meta",   "version",                  "");
             Write("global", "theme",                    "dark");
             Write("global", "check_interval_sec",       "30");

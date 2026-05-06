@@ -110,6 +110,7 @@
       <SubType>Code</SubType>
     </Compile>
     <EmbeddedResource Include="Resources\app-icon.png" />
+    <EmbeddedResource Include="Resources\autosaver.default.ini" />
     <Content Include="Resources\app-icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
