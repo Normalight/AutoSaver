@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.15] - 2026-05-07
+
+### Fixed
+- **Installer（Inno）**：卸载脚本里误用 **`;`** 当作注释（Inno Pascal 仅支持 **`{ }`** / **`(* *)`** / **`//`**），导致 ISCC 将 **`DelTree(Path,...)`** 当成代码并报 **`Unknown identifier 'Path'`**。
+
 ## [1.5.14] - 2026-05-07
 
 ### Fixed

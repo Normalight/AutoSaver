@@ -101,7 +101,7 @@ begin
   if not DeleteUserConfig then
     Exit;
 
-  ; DelTree(Path, IsDir, DeleteFiles, DeleteSubdirsAlso) — Inno 6 需四个布尔参数
+  { Inno 6: DelTree(Path, IsDir, DeleteFiles, DeleteSubdirsAlso) }
   DelTree(ExpandConstant('{userappdata}\{#MyAppName}'), True, True, True);
 
   if FileExists(ExpandConstant('{app}\autosaver.ini')) then
