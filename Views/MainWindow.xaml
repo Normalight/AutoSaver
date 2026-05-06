@@ -7,7 +7,7 @@
         MinHeight="360" MinWidth="260"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
-        AllowsTransparency="False">
+        AllowsTransparency="True">
 
     <Window.Resources>
         <conv:BoolToPausePlayPathConverter x:Key="BoolToPausePlayPath"/>
@@ -17,10 +17,10 @@
     </Window.Resources>
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
+        <shell:WindowChrome CaptionHeight="0" CornerRadius="12" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <Border Background="{DynamicResource WindowBackground}">
+    <Border Background="{DynamicResource WindowBackground}" CornerRadius="12">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
