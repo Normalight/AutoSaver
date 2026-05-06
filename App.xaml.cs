@@ -41,21 +41,14 @@ namespace AutoSaver
                 return;
             }
 
-            // Read version from VERSION file
-            try
+            var iniVersion = ConfigService.AppVersion;
+            if (!string.IsNullOrWhiteSpace(iniVersion))
+                Version = iniVersion;
+            else
             {
-                var versionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VERSION");
-                if (File.Exists(versionPath))
-                {
-                    var fileVersion = File.ReadAllText(versionPath).Trim();
-                    if (!string.IsNullOrWhiteSpace(fileVersion))
-                        Version = fileVersion;
-                }
-            }
-            catch { }
-
-            if (string.IsNullOrWhiteSpace(Version))
                 Version = GetAssemblyVersion();
+                ConfigService.AppVersion = Version;
+            }
 
             CurrentReleaseNotes = ChangelogService.GetReleaseNotes(changelogPath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md"), version: Version);
 

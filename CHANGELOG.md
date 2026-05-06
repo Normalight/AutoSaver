@@ -5,6 +5,16 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-05-06
+
+### Changed
+- Version is now stored in `autosaver.ini` under `[meta]` instead of a separate `VERSION` file.
+- Settings dialog height reduced (640→480) for a more compact layout.
+
+### Fixed
+- `AddEditDialog` round corners no longer show white background corners — window now uses `AllowsTransparency="True"`.
+- Input fields (`NameBox`, `ExeBox`) in `AddEditDialog` now display text correctly with explicit height instead of margin-based sizing.
+
 ## [1.3.1] - 2026-05-06
 
 ### Added

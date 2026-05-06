@@ -61,6 +61,12 @@ namespace AutoSaver.Services
             set => Write("global", "show_notifications", value ? "true" : "false");
         }
 
+        public static string AppVersion
+        {
+            get => Read("meta", "version", "");
+            set => Write("meta", "version", value);
+        }
+
         public static List<ProgramItem> LoadPrograms()
         {
             var programs = new List<ProgramItem>();
