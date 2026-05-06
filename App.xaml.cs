@@ -236,12 +236,24 @@ namespace AutoSaver
             base.OnExit(e);
         }
 
+        private static readonly object _logLock = new object();
+        private const long MaxLogSize = 1_000_000;
+
         private void Log(string message)
         {
             try
             {
-                var entry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{message}]";
-                File.AppendAllText(_logPath, entry + Environment.NewLine);
+                var entry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{message}]{Environment.NewLine}";
+                lock (_logLock)
+                {
+                    if (File.Exists(_logPath) && new FileInfo(_logPath).Length > MaxLogSize)
+                    {
+                        var bak = _logPath + ".bak";
+                        try { File.Delete(bak); } catch { }
+                        File.Move(_logPath, bak);
+                    }
+                    File.AppendAllText(_logPath, entry);
+                }
             }
             catch { }
         }

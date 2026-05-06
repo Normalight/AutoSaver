@@ -58,22 +58,18 @@ namespace AutoSaver.Services
         public static List<ProgramItem> LoadPrograms()
         {
             var programs = new List<ProgramItem>();
-            var countStr = Read("programs", "count", "0");
-            if (!int.TryParse(countStr, out var count)) return programs;
-
-            for (int i = 1; i <= count; i++)
+            for (int i = 1; ; i++)
             {
-                var section = $"program.{i}";
-                var id = Read(section, "id");
-                if (string.IsNullOrEmpty(id)) continue;
+                var id = Read($"program.{i}", "id");
+                if (string.IsNullOrEmpty(id)) break;
 
                 programs.Add(new ProgramItem
                 {
                     Id = id,
-                    Name = Read(section, "name"),
-                    Exe = Read(section, "exe"),
-                    Enabled = Read(section, "enabled", "true") == "true",
-                    SaveIntervalSec = int.TryParse(Read(section, "save_interval_sec", "300"), out var iv) ? iv : 300
+                    Name = Read($"program.{i}", "name"),
+                    Exe = Read($"program.{i}", "exe"),
+                    Enabled = Read($"program.{i}", "enabled", "true") == "true",
+                    SaveIntervalSec = int.TryParse(Read($"program.{i}", "save_interval_sec", "300"), out var iv) ? iv : 300
                 });
             }
             return programs;
@@ -81,7 +77,7 @@ namespace AutoSaver.Services
 
         public static void SavePrograms(List<ProgramItem> programs)
         {
-            Write("programs", "count", programs.Count.ToString());
+            // Write current programs
             for (int i = 0; i < programs.Count; i++)
             {
                 var section = $"program.{i + 1}";
@@ -91,6 +87,14 @@ namespace AutoSaver.Services
                 Write(section, "exe", p.Exe);
                 Write(section, "enabled", p.Enabled ? "true" : "false");
                 Write(section, "save_interval_sec", p.SaveIntervalSec.ToString());
+            }
+
+            // Clean up stale sections beyond the current count
+            for (int i = programs.Count + 1; ; i++)
+            {
+                var id = Read($"program.{i}", "id");
+                if (string.IsNullOrEmpty(id)) break;
+                WritePrivateProfileString($"program.{i}", null, null, IniPath);
             }
         }
     }

@@ -61,9 +61,6 @@ check_interval_sec = 3
 minimize_to_tray_on_close = true
 theme = system
 
-[programs]
-count = 1
-
 [program.1]
 id = 550e8400-e29b-41d4-a716-446655440000
 name = SAI2

@@ -5,6 +5,17 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-05-06
+
+### Changed
+- Simplified INI format: removed redundant `[programs] count` key, programs loaded by scanning sections until empty
+- Stale INI sections beyond current program count are now cleaned up on save
+
+### Fixed
+- Log file now rotates at 1 MB (renames to `autosaver.log.bak`) instead of growing unbounded
+- Concurrent log writes protected by lock
+- Bitmap resource properly disposed after icon extraction
+
 ## [1.0.0] - 2026-05-06
 
 ### Added
