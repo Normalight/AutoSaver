@@ -88,7 +88,9 @@ namespace AutoSaver.Services
             catch { }
 
             // fallback: write defaults manually if embedded resource unavailable
-            Write("meta",   "version",                  "");
+            var asmVer = Assembly.GetExecutingAssembly().GetName().Version;
+            var verStr = asmVer == null ? "1.3.6" : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}";
+            Write("meta", "version", verStr);
             Write("global", "theme",                    "dark");
             Write("global", "check_interval_sec",       "30");
             Write("global", "start_with_windows",       "false");
