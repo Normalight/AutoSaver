@@ -146,6 +146,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Add -->
@@ -173,8 +174,20 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- Settings -->
+                    <!-- About -->
                     <Button Grid.Column="3" Style="{StaticResource GhostButton}"
+                            Height="30" Width="30" MinWidth="30" Padding="0"
+                            Click="OnAboutClick" ToolTip="关于 AutoSaver">
+                        <Border Width="16" Height="16" CornerRadius="8"
+                                BorderBrush="{DynamicResource TextSecondary}" BorderThickness="1.4">
+                            <TextBlock Text="?" Foreground="{DynamicResource TextSecondary}"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Button>
+
+                    <!-- Settings -->
+                    <Button Grid.Column="4" Style="{StaticResource GhostButton}"
                             Height="30" Width="30" MinWidth="30" Padding="0"
                             Click="OnSettingsClick" ToolTip="设置">
                         <Path Data="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"

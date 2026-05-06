@@ -142,9 +142,15 @@ namespace AutoSaver.Views
                     if (hProcess == IntPtr.Zero) return null;
                     var sb = new StringBuilder(1024);
                     var size = sb.Capacity;
-                    if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
-                        return sb.ToString();
-                    CloseHandle(hProcess);
+                    try
+                    {
+                        if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
+                            return sb.ToString();
+                    }
+                    finally
+                    {
+                        CloseHandle(hProcess);
+                    }
                 }
                 catch { }
                 return null;

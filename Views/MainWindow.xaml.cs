@@ -178,12 +178,15 @@ namespace AutoSaver.Views
                         {
                             var sb = new StringBuilder(1024);
                             var size = sb.Capacity;
-                            if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
+                            try
+                            {
+                                if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
+                                    return sb.ToString();
+                            }
+                            finally
                             {
                                 CloseHandle(hProcess);
-                                return sb.ToString();
                             }
-                            CloseHandle(hProcess);
                         }
                     }
                     catch { }
@@ -289,6 +292,12 @@ namespace AutoSaver.Views
         {
             var dlg = new SettingsDialog { Owner = this };
             dlg.ShowDialog();
+        }
+
+        private void OnAboutClick(object sender, RoutedEventArgs e)
+        {
+            if (Application.Current is App app)
+                app.OpenAboutDialog(this);
         }
 
         private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)

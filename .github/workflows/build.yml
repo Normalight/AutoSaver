@@ -33,11 +33,19 @@ jobs:
         run: |
           msbuild AutoSaver.csproj /p:Configuration=Release /v:minimal /nologo
 
+      - name: Prepare release assets
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.value }}'
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item bin/Release/autosaver.exe "dist/AutoSaver-Setup-v$version.exe"
+          Compress-Archive -Path bin/Release/autosaver.exe -DestinationPath "dist/AutoSaver-v$version.zip" -Force
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: autosaver-${{ steps.version.outputs.value }}
-          path: bin/Release/autosaver.exe
+          name: autosaver-v${{ steps.version.outputs.value }}
+          path: dist/*
 
       - name: Extract release notes
         id: release_notes
@@ -59,6 +67,8 @@ jobs:
         with:
           name: AutoSaver ${{ steps.version.outputs.value }}
           body_path: release-notes.md
-          files: bin/Release/autosaver.exe
+          files: |
+            dist/AutoSaver-Setup-v${{ steps.version.outputs.value }}.exe
+            dist/AutoSaver-v${{ steps.version.outputs.value }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

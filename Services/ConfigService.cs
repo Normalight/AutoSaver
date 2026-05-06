@@ -62,6 +62,12 @@ namespace AutoSaver.Services
             set => Write("global", "show_notifications", value ? "true" : "false");
         }
 
+        public static bool CheckUpdatesOnStartup
+        {
+            get => Read("global", "check_updates_on_startup", "true") == "true";
+            set => Write("global", "check_updates_on_startup", value ? "true" : "false");
+        }
+
         public static string AppVersion
         {
             get => Read("meta", "version", "");
@@ -70,32 +76,39 @@ namespace AutoSaver.Services
 
         public static void EnsureDefaults()
         {
-            if (File.Exists(IniPath)) return;
-
-            try
+            var fileExists = File.Exists(IniPath);
+            if (!fileExists)
             {
-                var asm = Assembly.GetExecutingAssembly();
-                using (var stream = asm.GetManifestResourceStream("AutoSaver.Resources.autosaver.default.ini"))
+                try
                 {
-                    if (stream != null)
+                    var asm = Assembly.GetExecutingAssembly();
+                    using (var stream = asm.GetManifestResourceStream("AutoSaver.Resources.autosaver.default.ini"))
                     {
-                        using (var fs = new FileStream(IniPath, FileMode.Create, FileAccess.Write))
-                            stream.CopyTo(fs);
-                        return;
+                        if (stream != null)
+                        {
+                            using (var fs = new FileStream(IniPath, FileMode.Create, FileAccess.Write))
+                                stream.CopyTo(fs);
+                        }
                     }
                 }
-            }
-            catch { }
+                catch { }
 
-            // fallback: write defaults manually if embedded resource unavailable
-            var asmVer = Assembly.GetExecutingAssembly().GetName().Version;
-            var verStr = asmVer == null ? "1.3.6" : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}";
-            Write("meta", "version", verStr);
-            Write("global", "theme",                    "dark");
-            Write("global", "check_interval_sec",       "30");
-            Write("global", "start_with_windows",       "false");
-            Write("global", "minimize_to_tray_on_close","true");
-            Write("global", "show_notifications",       "true");
+                if (!File.Exists(IniPath))
+                {
+                    var asmVer = Assembly.GetExecutingAssembly().GetName().Version;
+                    var verStr = asmVer == null ? "1.3.6" : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}";
+                    Write("meta", "version", verStr);
+                    Write("global", "theme",                    "dark");
+                    Write("global", "check_interval_sec",       "30");
+                    Write("global", "start_with_windows",       "false");
+                    Write("global", "minimize_to_tray_on_close","true");
+                    Write("global", "show_notifications",       "true");
+                    Write("global", "check_updates_on_startup", "true");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(Read("global", "check_updates_on_startup", "")))
+                Write("global", "check_updates_on_startup", "true");
         }
 
         public static List<ProgramItem> LoadPrograms()
