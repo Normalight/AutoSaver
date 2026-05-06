@@ -32,6 +32,9 @@ desktop.ini
 *.swp
 *.swo
 
+# Git worktrees (project-local clones)
+.worktrees/
+
 # Dev tool configs (local only)
 CLAUDE.md
 .claude.local.md
