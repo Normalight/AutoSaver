@@ -142,7 +142,7 @@ namespace AutoSaver.Views
         {
             if (_programs.Any(p => p.Exe.Equals(exe, StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show($""{exe}" 已在列表中。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"\"{exe}\" 已在列表中。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
