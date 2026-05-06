@@ -93,12 +93,9 @@ namespace AutoSaver
                 Visible = true
             };
 
-            // Use extracted icon, fallback to exe-side file, then system default
+            // Use extracted icon, fallback to system default
             if (!string.IsNullOrEmpty(_iconTempPath) && File.Exists(_iconTempPath))
                 _tray.Icon = Icon.FromHandle(new Bitmap(_iconTempPath).GetHicon());
-            else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "generated-image-2.png")))
-                _tray.Icon = Icon.FromHandle(new Bitmap(
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "generated-image-2.png")).GetHicon());
             else
                 _tray.Icon = SystemIcons.Application;
 
