@@ -4,15 +4,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
 
 namespace AutoSaver.Services
 {
     public static class WindowService
     {
-        private const uint WM_KEYDOWN = 0x0100;
-        private const uint WM_KEYUP = 0x0101;
         private const int VK_CONTROL = 0x11;
+        private const int VK_S = 0x53;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -40,7 +41,7 @@ namespace AutoSaver.Services
         public static IntPtr GetForegroundWindowHandle() => GetForegroundWindow();
 
         [DllImport("user32.dll")]
-        private static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
         private static readonly object PidSnapshotLock = new object();
         private static DateTime _pidSnapshotUtc;
@@ -154,7 +155,8 @@ namespace AutoSaver.Services
         }
 
         /// <summary>
-        /// 仅通过 PostMessage 向前台 HWND 注入 Ctrl+S，不改变窗口形态与焦点。
+        /// 向前台窗口注入 Ctrl+S。使用 <see cref="keybd_event"/> 与手动按键一致，
+        /// 会更新系统键盘状态；纯 PostMessage(lParam=0) 在 Photoshop 等软件中会被当成单独按 S（如激活图章）。
         /// </summary>
         public static void SendCtrlSToWindows(IReadOnlyList<IntPtr> hwnds)
         {
@@ -170,13 +172,27 @@ namespace AutoSaver.Services
         {
             try
             {
-                PostMessage(hWnd, WM_KEYDOWN, VK_CONTROL, 0);
-                PostMessage(hWnd, WM_KEYDOWN, (int)'S', 0);
-                PostMessage(hWnd, WM_KEYUP, (int)'S', 0);
-                PostMessage(hWnd, WM_KEYUP, VK_CONTROL, 0);
+                if (hWnd == IntPtr.Zero || !IsWindow(hWnd))
+                    return false;
+
+                var fg = GetForegroundWindow();
+                GetWindowThreadProcessId(hWnd, out uint pidHwnd);
+                GetWindowThreadProcessId(fg, out uint pidFg);
+                // 与调度器使用的 HWND 可能不是同一句柄（子窗口/浮动面板），只要仍是同一前台进程即可注入
+                if (pidHwnd != pidFg)
+                    return false;
+
+                keybd_event((byte)VK_CONTROL, 0, 0, UIntPtr.Zero);
+                Thread.Sleep(5);
+                keybd_event((byte)VK_S, 0, 0, UIntPtr.Zero);
+                keybd_event((byte)VK_S, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                keybd_event((byte)VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
                 return true;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
 
         public static string GetWindowTitle(IntPtr hWnd)

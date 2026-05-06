@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.16] - 2026-05-07
+
+### Fixed
+- **自动保存 / Ctrl+S**：不再仅用 **`PostMessage`**（`lParam=0` 不更新键盘状态）。改为 **`keybd_event`** 注入 Ctrl+S，与手动按键一致，避免在 **Adobe Photoshop** 等软件中被当成单独按 **S**（如激活图章）。发送前校验前台进程与目标窗口一致。
+
 ## [1.5.15] - 2026-05-07
 
 ### Fixed
