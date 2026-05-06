@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using AutoSaver.Models;
 using AutoSaver.Services;
@@ -30,19 +31,29 @@ namespace AutoSaver.Views
 
         public void RefreshList()
         {
-            var displayItems = _programs.Select(p => new ProgramDisplay
+            var displayItems = _programs.Select(p =>
             {
-                Id = p.Id,
-                Name = p.Name,
-                Exe = p.Exe,
-                IntervalText = (p.SaveIntervalSec / 60) + " 分钟",
-                StatusText = _statuses.TryGetValue(p.Id, out var running) && running == "running"
-                    ? "● 运行中" : "○ 未检测到",
-                StatusColor = _statuses.TryGetValue(p.Id, out var s) && s == "running"
-                    ? SuccessBrush : MutedBrush
+                var isRunning = _statuses.TryGetValue(p.Id, out var running) && running == "running";
+                _lastSaves.TryGetValue(p.Name, out var lastSave);
+                return new ProgramDisplay
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Exe = p.Exe,
+                    ExeSummary = CreateExeSummary(p.Exe),
+                    IntervalText = FormatInterval(p.SaveIntervalSec),
+                    StatusText = isRunning ? "运行中" : "未检测到",
+                    StatusBadgeText = isRunning ? "监控中" : "等待启动",
+                    StatusColor = isRunning ? SuccessBrush : MutedBrush,
+                    LastSaveText = lastSave == null
+                        ? "最近保存：暂无记录"
+                        : $"最近保存：{lastSave.Item1} · {lastSave.Item2} 个窗口"
+                };
             }).ToList();
 
             ProgramListView.ItemsSource = displayItems;
+            ProgramCountLabel.Text = _programs.Count.ToString();
+            RunningCountLabel.Text = _programs.Count(p => _statuses.TryGetValue(p.Id, out var running) && running == "running").ToString();
             UpdateStatusBar();
         }
 
@@ -59,7 +70,22 @@ namespace AutoSaver.Views
             {
                 _lastSaves[prog.Name] = Tuple.Create(timestamp, windowCount);
                 UpdateStatusBar();
+                RefreshList();
             }
+        }
+
+        private static string CreateExeSummary(string exe)
+        {
+            if (string.IsNullOrWhiteSpace(exe)) return "未配置路径";
+            var fileName = System.IO.Path.GetFileName(exe);
+            return string.IsNullOrEmpty(fileName) ? exe : fileName;
+        }
+
+        private static string FormatInterval(int seconds)
+        {
+            if (seconds % 3600 == 0) return $"保存间隔：{seconds / 3600} 小时";
+            if (seconds % 60 == 0) return $"保存间隔：{seconds / 60} 分钟";
+            return $"保存间隔：{seconds} 秒";
         }
 
         private void UpdateStatusBar()
@@ -116,9 +142,8 @@ namespace AutoSaver.Views
             if (result != MessageBoxResult.Yes) return;
 
             _programs.RemoveAll(p => p.Id == display.Id);
-            var deadName = _lastSaves.Keys.FirstOrDefault(k =>
-                !_programs.Any(p => p.Name == k));
-            if (deadName != null) _lastSaves.Remove(deadName);
+            _statuses.Remove(display.Id);
+            _lastSaves.Remove(display.Name);
             ConfigService.SavePrograms(_programs);
             RefreshList();
             ProgramDeleted?.Invoke(display.Id);
@@ -129,6 +154,38 @@ namespace AutoSaver.Views
             var dlg = new SettingsDialog();
             dlg.Owner = this;
             dlg.ShowDialog();
+        }
+
+        private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+            if (e.ClickCount == 2)
+            {
+                ToggleMaximizeRestore();
+                return;
+            }
+
+            DragMove();
+        }
+
+        private void OnMinimizeClick(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void OnMaximizeRestoreClick(object sender, RoutedEventArgs e)
+        {
+            ToggleMaximizeRestore();
+        }
+
+        private void OnCloseClick(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private void ToggleMaximizeRestore()
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         }
     }
 }

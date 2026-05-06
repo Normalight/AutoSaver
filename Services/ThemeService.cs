@@ -61,41 +61,34 @@ namespace AutoSaver.Services
             var dict = IsDarkMode ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml";
             var uri = new Uri(dict, UriKind.Relative);
 
-            // Remove existing theme if any
-            var oldTheme = FindThemeDictionary(app);
-            if (oldTheme != null)
-                app.Resources.MergedDictionaries.Remove(oldTheme);
+            for (var i = app.Resources.MergedDictionaries.Count - 1; i >= 0; i--)
+            {
+                var source = app.Resources.MergedDictionaries[i].Source?.ToString() ?? "";
+                if (IsThemeDictionary(source))
+                    app.Resources.MergedDictionaries.RemoveAt(i);
+            }
 
-            // Load new theme
-            var newTheme = new ResourceDictionary { Source = uri };
-            app.Resources.MergedDictionaries.Add(newTheme);
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = uri });
         }
 
         public static void InitTheme(Application app)
         {
-            // Ensure at least the dark theme is loaded on startup
-            // ApplyTheme will replace it if needed
             ApplyTheme(app);
 
             // Watch for system theme changes
             SystemEvents.UserPreferenceChanged += (s, e) =>
             {
-                if (e.Category == UserPreferenceCategory.General)
+                if (e.Category == UserPreferenceCategory.General && CurrentTheme == AppTheme.System)
                 {
                     app.Dispatcher.Invoke(() => ApplyTheme(app));
                 }
             };
         }
 
-        private static ResourceDictionary FindThemeDictionary(Application app)
+        private static bool IsThemeDictionary(string source)
         {
-            foreach (var dict in app.Resources.MergedDictionaries)
-            {
-                var source = dict.Source?.ToString() ?? "";
-                if (source.Contains("DarkTheme") || source.Contains("LightTheme"))
-                    return dict;
-            }
-            return null;
+            return source.IndexOf("DarkTheme.xaml", StringComparison.OrdinalIgnoreCase) >= 0
+                || source.IndexOf("LightTheme.xaml", StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }

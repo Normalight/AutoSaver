@@ -37,8 +37,8 @@ namespace AutoSaver.Services
         {
             get
             {
-                var v = Read("global", "check_interval_sec", "3");
-                return int.TryParse(v, out var n) && n > 0 ? n : 3;
+                var v = Read("global", "check_interval_sec", "30");
+                return int.TryParse(v, out var n) && n > 0 ? n : 30;
             }
             set => Write("global", "check_interval_sec", value.ToString());
         }
