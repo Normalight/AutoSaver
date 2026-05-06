@@ -1,7 +1,7 @@
 <Window x:Class="AutoSaver.Views.AddEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="添加程序" Height="300" Width="400"
+        Title="添加程序" Height="300" Width="320"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent">
 
