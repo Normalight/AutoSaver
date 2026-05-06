@@ -102,8 +102,36 @@ namespace AutoSaver
 
         private static string GetAssemblyVersion()
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            return version == null ? "1.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+                var iv = info?.InformationalVersion?.Trim();
+                if (!string.IsNullOrEmpty(iv))
+                    return iv;
+
+                var ver = asm.GetName().Version;
+                if (ver != null && !(ver.Major == 0 && ver.Minor == 0 && ver.Build == 0))
+                    return $"{ver.Major}.{ver.Minor}.{ver.Build}";
+
+                try
+                {
+                    var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VERSION");
+                    if (File.Exists(path))
+                    {
+                        foreach (var line in File.ReadAllLines(path))
+                        {
+                            var t = line.Trim();
+                            if (t.Length > 0)
+                                return t;
+                        }
+                    }
+                }
+                catch { }
+            }
+            catch { }
+
+            return "1.0.0";
         }
 
         private void ExtractIcon()

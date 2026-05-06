@@ -54,13 +54,60 @@
                                  MouseDoubleClick="OnItemDoubleClick"
                                  KeyDown="OnListKeyDown"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="6"
+                                                        Padding="6,6" SnapsToDevicePixels="True">
+                                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BgTertiary}"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource AccentColor}"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="2"/>
+                                                    </Trigger>
+                                                    <MultiTrigger>
+                                                        <MultiTrigger.Conditions>
+                                                            <Condition Property="IsSelected" Value="False"/>
+                                                            <Condition Property="IsMouseOver" Value="True"/>
+                                                        </MultiTrigger.Conditions>
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BgSecondary}"/>
+                                                    </MultiTrigger>
+                                                    <MultiTrigger>
+                                                        <MultiTrigger.Conditions>
+                                                            <Condition Property="IsSelected" Value="True"/>
+                                                            <Condition Property="IsMouseOver" Value="True"/>
+                                                        </MultiTrigger.Conditions>
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BgTertiary}"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource AccentColor}"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="2"/>
+                                                    </MultiTrigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="4,4">
+                                    <StackPanel Orientation="Horizontal">
                                         <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center"
                                                RenderOptions.BitmapScalingMode="HighQuality"/>
-                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource TextPrimary}" FontSize="13"/>
+                                        <StackPanel VerticalAlignment="Center" MinWidth="0">
+                                            <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding ExeName}" Margin="0,3,0,0"
+                                                       Style="{StaticResource Caption}"
+                                                       Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

@@ -10,6 +10,9 @@ namespace AutoSaver.Services
 {
     public static class ConfigService
     {
+        /// <summary>惰性解析：优先 %AppData%\AutoSaver\（安装目录在 Program Files 时也可写）；若曾使用 exe 旁旧配置则迁移一次。</summary>
+        private static string _resolvedIniPath;
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         private static extern int GetPrivateProfileString(
             string lpAppName, string lpKeyName, string lpDefault,
@@ -19,8 +22,50 @@ namespace AutoSaver.Services
         private static extern bool WritePrivateProfileString(
             string lpAppName, string lpKeyName, string lpValue, string lpFileName);
 
-        public static string IniPath =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "autosaver.ini");
+        public static string IniPath
+        {
+            get
+            {
+                if (_resolvedIniPath != null)
+                    return _resolvedIniPath;
+                _resolvedIniPath = ResolveIniPath();
+                return _resolvedIniPath;
+            }
+        }
+
+        private static string ResolveIniPath()
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory ?? "";
+            var legacyIni = Path.Combine(baseDir, "autosaver.ini");
+
+            var appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AutoSaver");
+            var appDataIni = Path.Combine(appDataDir, "autosaver.ini");
+
+            if (File.Exists(appDataIni))
+                return appDataIni;
+
+            if (File.Exists(legacyIni))
+            {
+                try
+                {
+                    Directory.CreateDirectory(appDataDir);
+                    File.Copy(legacyIni, appDataIni, overwrite: false);
+                    return appDataIni;
+                }
+                catch
+                {
+                    return legacyIni;
+                }
+            }
+
+            try
+            {
+                Directory.CreateDirectory(appDataDir);
+            }
+            catch { }
+
+            return appDataIni;
+        }
 
         internal static string Read(string section, string key, string defaultValue = "")
         {
@@ -76,6 +121,14 @@ namespace AutoSaver.Services
 
         public static void EnsureDefaults()
         {
+            try
+            {
+                var dir = Path.GetDirectoryName(IniPath);
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+            }
+            catch { }
+
             if (!File.Exists(IniPath))
             {
                 try
@@ -95,7 +148,9 @@ namespace AutoSaver.Services
                 if (!File.Exists(IniPath))
                 {
                     var asmVer = Assembly.GetExecutingAssembly().GetName().Version;
-                    var verStr = asmVer == null ? "1.3.6" : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}";
+                    var verStr = asmVer == null || (asmVer.Major == 0 && asmVer.Minor == 0 && asmVer.Build == 0)
+                        ? "1.0.0"
+                        : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}";
                     Write("meta", "version", verStr);
                     Write("global", "theme", "dark");
                     Write("global", "check_interval_sec", "30");

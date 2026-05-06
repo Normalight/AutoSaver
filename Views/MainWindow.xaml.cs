@@ -85,9 +85,9 @@ namespace AutoSaver.Views
                     statusBrush = TryFindResource("TextMuted") as Brush ?? FallbackMutedBrush;
 
                 var icon = GetIconFromPath(exePath);
-                var displayName = ProgramItem.GetExeStemDisplay(p.Exe);
+                var displayName = p.GetDisplayTitle();
                 if (string.IsNullOrWhiteSpace(displayName))
-                    displayName = p.Name;
+                    displayName = ProgramItem.GetExeStemDisplay(p.Exe);
                 var exeFileSummary = CreateExeSummary(p.Exe);
 
                 var timerLine = FormatListTimerStatus(tickRow, p.Enabled);
@@ -206,8 +206,7 @@ namespace AutoSaver.Views
             if (dlg.ShowDialog() != true) return;
 
             var exe = Path.GetFileName(dlg.FileName);
-            var stem = ProgramItem.GetExeStemDisplay(exe);
-            AddProgram(string.IsNullOrEmpty(stem) ? Path.GetFileNameWithoutExtension(exe) : stem, exe);
+            AddProgram(exe, null);
         }
 
         private void AddByPicker()
@@ -215,12 +214,11 @@ namespace AutoSaver.Views
             var picker = new ProcessPickerDialog { Owner = this };
             if (picker.ShowDialog() != true || string.IsNullOrEmpty(picker.SelectedProcessName)) return;
 
-            var exe = picker.SelectedProcessName;
-            var stem = ProgramItem.GetExeStemDisplay(exe);
-            AddProgram(string.IsNullOrEmpty(stem) ? Path.GetFileNameWithoutExtension(exe) : stem, exe);
+            AddProgram(picker.SelectedProcessName, picker.SelectedFriendlyName);
         }
 
-        private void AddProgram(string name, string exe)
+        /// <param name="preferredDisplayName">从运行中选取时传入产品名/友好名；本地浏览时为 null（使用 exe 短名）。</param>
+        private void AddProgram(string exe, string preferredDisplayName)
         {
             var key = ProgramItem.NormalizeExeKey(exe);
             if (string.IsNullOrEmpty(key))
@@ -240,9 +238,15 @@ namespace AutoSaver.Views
             }
 
             var stem = ProgramItem.GetExeStemDisplay(exe);
+            var name = !string.IsNullOrWhiteSpace(preferredDisplayName)
+                ? preferredDisplayName.Trim()
+                : (string.IsNullOrEmpty(stem)
+                    ? Path.GetFileNameWithoutExtension(exe)
+                    : stem);
+
             var prog = new ProgramItem
             {
-                Name = string.IsNullOrEmpty(stem) ? name : stem,
+                Name = name,
                 Exe = exe,
                 Enabled = true,
                 SaveIntervalSec = ConfigService.CheckIntervalSec

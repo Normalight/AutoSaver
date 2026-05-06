@@ -56,7 +56,8 @@ namespace AutoSaver.Services
     }
 
     /// <summary>
-    /// 仅跟踪当前前台窗口：配置列表为白名单；切换前台时重置倒计时。
+    /// 仅跟踪当前前台窗口：配置列表为白名单。
+    /// 切换到其他监控项或不在白名单内的前台时重置倒计时；同一进程下仅 HWND 变化（模态框、印章等弹窗）不重置。
     /// </summary>
     public class SaveScheduler
     {
@@ -242,24 +243,24 @@ namespace AutoSaver.Services
 
                 lock (_lock)
                 {
-                    bool switched = fgHwnd != _slotHwnd ||
-                                    !string.Equals(_slotProgramId, match.Id, StringComparison.Ordinal);
-                    if (switched)
+                    // 仅当「监控的程序条目」变化时重置间隔；同一条目下 HWND 随弹窗/子窗口变化不算切换。
+                    bool programChanged = _slotProgramId == null ||
+                        !string.Equals(_slotProgramId, match.Id, StringComparison.Ordinal);
+
+                    _slotHwnd = fgHwnd;
+                    _slotProgramId = match.Id;
+
+                    if (programChanged)
                     {
-                        _slotHwnd = fgHwnd;
-                        _slotProgramId = match.Id;
                         _slotRemainingSec = EffectiveInterval(match);
                     }
-                    else
+                    else if (_slotRemainingSec > 0)
                     {
-                        if (_slotRemainingSec > 0)
+                        _slotRemainingSec--;
+                        if (_slotRemainingSec == 0)
                         {
-                            _slotRemainingSec--;
-                            if (_slotRemainingSec == 0)
-                            {
-                                AddSave(toSave, match, fgHwnd);
-                                _slotRemainingSec = EffectiveInterval(match);
-                            }
+                            AddSave(toSave, match, fgHwnd);
+                            _slotRemainingSec = EffectiveInterval(match);
                         }
                     }
                 }
@@ -302,13 +303,11 @@ namespace AutoSaver.Services
                 return new FocusCountdownSnapshot(false, "", 0, 0);
 
             var iv = EffectiveInterval(foregroundMatch);
-            var stem = ProgramItem.GetExeStemDisplay(foregroundMatch.Exe);
-            if (string.IsNullOrWhiteSpace(stem))
-                stem = foregroundMatch.Name;
+            var titleStem = foregroundMatch.GetDisplayTitle();
             var title = WindowService.GetWindowTitle(fgHwnd);
             var label = string.IsNullOrWhiteSpace(title)
-                ? stem
-                : $"{stem} · {title}";
+                ? titleStem
+                : $"{titleStem} · {title}";
             return new FocusCountdownSnapshot(true, label, _slotRemainingSec, iv);
         }
 

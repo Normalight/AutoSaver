@@ -5,6 +5,19 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.4] - 2026-05-06
+
+### Fixed
+- **Countdown reset on in-app dialogs** (e.g. Adobe stamp/sign modals): only a change of **monitored program entry** resets the timer; the same executable may move foreground across multiple HWNDs without resetting (modal/tool windows).
+- **Default config after MSI-style install**: `autosaver.ini` is now stored under **`%AppData%\AutoSaver\`** (writable when the exe lives in Program Files). Legacy `autosaver.ini` beside the portable exe is **migrated once** to AppData when present. `EnsureDefaults` creates the directory before extracting the embedded template.
+
+## [1.5.3] - 2026-05-06
+
+### Fixed
+- **Version label showed `v0.0.0`**: classic projects were not embedding assembly version from the `.csproj` MSBuild properties alone — added `Properties/AssemblyInfo.cs` and `GetAssemblyVersion()` now prefers `AssemblyInformationalVersion`, then falls back to reading the deployed `VERSION` file beside the exe.
+- **Process picker**: selected row now has visible highlight (accent border + background); each row shows **friendly name** and **exe filename** (e.g. product name + `sai.exe`) so it matches what gets saved.
+- **Name mismatch after pick from running**: adding or editing from the running-process picker now keeps the **friendly display name** as `ProgramItem.Name` (same as shown in the picker), while `Exe` stays the real executable name.
+
 ## [1.5.2] - 2026-05-06
 
 ### Changed

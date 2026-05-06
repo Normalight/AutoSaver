@@ -13,7 +13,7 @@ AutoSaver monitors target processes and sends `Ctrl+S` to their windows at confi
 - **Per-program intervals** — each program has its own save frequency (1 min to 60 hours)
 - **Dark / Light / System theme** — follows your Windows theme preference, toggle in settings
 - **Zero dependencies** — single `.exe`, no runtime install required
-- **INI config** — human-readable `autosaver.ini` next to the executable
+- **INI config** — human-readable `autosaver.ini` under `%AppData%\AutoSaver\` (exe‑folder copy migrated on first run if present)
 
 ## System Requirements
 
@@ -23,7 +23,7 @@ AutoSaver monitors target processes and sends `Ctrl+S` to their windows at confi
 ## Installation
 
 Download `autosaver.exe` from the [latest release](../../releases/latest) and place it anywhere you like.  
-It creates `autosaver.ini` and `autosaver.log` in the same directory on first run.
+On first run it creates `autosaver.ini` under `%AppData%\AutoSaver\` and writes `autosaver.log` next to the executable (if writable).
 
 ## Build from Source
 

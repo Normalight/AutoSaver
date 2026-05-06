@@ -55,10 +55,15 @@ namespace AutoSaver.Views
             if (picker.ShowDialog() == true && !string.IsNullOrEmpty(picker.SelectedProcessName))
             {
                 ExeBox.Text = picker.SelectedProcessName;
-                var stem = ProgramItem.GetExeStemDisplay(picker.SelectedProcessName);
-                NameBox.Text = string.IsNullOrEmpty(stem)
-                    ? System.IO.Path.GetFileNameWithoutExtension(picker.SelectedProcessName)
-                    : stem;
+                if (!string.IsNullOrWhiteSpace(picker.SelectedFriendlyName))
+                    NameBox.Text = picker.SelectedFriendlyName.Trim();
+                else
+                {
+                    var stem = ProgramItem.GetExeStemDisplay(picker.SelectedProcessName);
+                    NameBox.Text = string.IsNullOrEmpty(stem)
+                        ? System.IO.Path.GetFileNameWithoutExtension(picker.SelectedProcessName)
+                        : stem;
+                }
             }
         }
 
