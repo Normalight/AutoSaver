@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace AutoSaver.Views
 {
@@ -14,11 +15,40 @@ namespace AutoSaver.Views
                     "taskmgr", "autosaver" },
             StringComparer.OrdinalIgnoreCase);
 
+        private List<ProcessDisplay> _allProcesses;
+
         public string SelectedProcessName { get; private set; }
+
+        private class ProcessDisplay
+        {
+            public string DisplayName { get; set; }
+            public string ExeName { get; set; }
+        }
 
         public ProcessPickerDialog()
         {
             InitializeComponent();
+
+            // Set placeholder text
+            SearchBox.Text = "搜索进程名...";
+            SearchBox.Foreground = System.Windows.Media.Brushes.Gray;
+            SearchBox.GotFocus += (s, e) =>
+            {
+                if (SearchBox.Text == "搜索进程名...")
+                {
+                    SearchBox.Text = "";
+                    SearchBox.Foreground = System.Windows.Media.Brushes.White;
+                }
+            };
+            SearchBox.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(SearchBox.Text))
+                {
+                    SearchBox.Text = "搜索进程名...";
+                    SearchBox.Foreground = System.Windows.Media.Brushes.Gray;
+                }
+            };
+
             LoadProcesses();
         }
 
@@ -36,15 +66,43 @@ namespace AutoSaver.Views
                 catch { }
             }
 
-            ProcessList.ItemsSource = exes.Select(e => new { DisplayName = e }).ToList();
+            _allProcesses = exes.Select(e => new ProcessDisplay
+            {
+                DisplayName = e,
+                ExeName = e
+            }).ToList();
+
+            ApplyFilter("");
+            ProcessList.DisplayMemberPath = "DisplayName";
+        }
+
+        private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            var query = SearchBox.Text;
+            if (query == "搜索进程名...") query = "";
+            ApplyFilter(query);
+        }
+
+        private void ApplyFilter(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                ProcessList.ItemsSource = _allProcesses;
+            }
+            else
+            {
+                var q = query.ToLowerInvariant();
+                ProcessList.ItemsSource = _allProcesses
+                    .Where(p => p.ExeName.ToLowerInvariant().Contains(q))
+                    .ToList();
+            }
         }
 
         private void OnItemDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (ProcessList.SelectedItem != null)
+            if (ProcessList.SelectedItem is ProcessDisplay item)
             {
-                dynamic item = ProcessList.SelectedItem;
-                SelectedProcessName = item.DisplayName;
+                SelectedProcessName = item.ExeName;
                 DialogResult = true;
                 Close();
             }

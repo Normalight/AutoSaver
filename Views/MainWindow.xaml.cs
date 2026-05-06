@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media;
 using AutoSaver.Models;
 using AutoSaver.Services;
 using Microsoft.Win32;
@@ -13,6 +14,8 @@ namespace AutoSaver.Views
         private List<ProgramItem> _programs;
         private readonly Dictionary<string, string> _statuses = new Dictionary<string, string>();
         private readonly Dictionary<string, Tuple<string, int>> _lastSaves = new Dictionary<string, Tuple<string, int>>();
+        private static readonly SolidColorBrush SuccessBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80));
+        private static readonly SolidColorBrush MutedBrush = new SolidColorBrush(Color.FromRgb(0x94, 0x94, 0xB0));
 
         public event Action<ProgramItem> ProgramAdded;
         public event Action<ProgramItem> ProgramEdited;
@@ -38,7 +41,7 @@ namespace AutoSaver.Views
                 StatusText = _statuses.TryGetValue(p.Id, out var running) && running == "running"
                     ? "● 运行中" : "○ 未检测到",
                 StatusColor = _statuses.TryGetValue(p.Id, out var s) && s == "running"
-                    ? "Green" : "Gray"
+                    ? SuccessBrush : MutedBrush
             }).ToList();
 
             ProgramListView.ItemsSource = displayItems;
@@ -108,8 +111,13 @@ namespace AutoSaver.Views
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
             if (!(sender is FrameworkElement el && el.Tag is ProgramDisplay display)) return;
+
+            var result = MessageBox.Show(
+                $"确定要删除 \"{display.Name}\" 吗？",
+                "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+
             _programs.RemoveAll(p => p.Id == display.Id);
-            // Clean up last-save info for the deleted program
             var deadName = _lastSaves.Keys.FirstOrDefault(k =>
                 !_programs.Any(p => p.Name == k));
             if (deadName != null) _lastSaves.Remove(deadName);

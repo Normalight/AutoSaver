@@ -1,46 +1,71 @@
 <Window x:Class="AutoSaver.Views.AddEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="添加程序" Height="280" Width="400"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="添加程序" Height="320" Width="440"
+        Background="{StaticResource BgColor}"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
-    <StackPanel Margin="12">
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
-            <Button x:Name="BrowseButton" Content="&#x1F4C1; 选择本地程序"
-                    Width="150" Height="36" Margin="0,0,8,0" Click="OnBrowseClick"/>
-            <Button x:Name="PickRunningButton" Content="&#x1F4CB; 正在运行中选取"
-                    Width="150" Height="36" Click="OnPickRunningClick"/>
-        </StackPanel>
+    <StackPanel Margin="24">
 
-        <Grid Margin="0,6">
+        <!-- Two action buttons -->
+        <Grid Margin="0,0,0,20">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="70"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="BrowseButton" Grid.Column="0"
+                    Content="📁 选择本地程序" Style="{StaticResource SecondaryButton}"
+                    Height="44" Click="OnBrowseClick"/>
+            <Button x:Name="PickRunningButton" Grid.Column="2"
+                    Content="📋 正在运行中选取" Style="{StaticResource SecondaryButton}"
+                    Height="44" Click="OnPickRunningClick"/>
+        </Grid>
+
+        <!-- Form fields -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="32"/>
-                <RowDefinition Height="32"/>
-                <RowDefinition Height="32"/>
-                <RowDefinition Height="32"/>
+                <RowDefinition Height="42"/>
+                <RowDefinition Height="42"/>
+                <RowDefinition Height="42"/>
+                <RowDefinition Height="36"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Text="显示名称:" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
-            <TextBox x:Name="NameBox" Grid.Row="0" Grid.Column="1" Margin="4,2" Height="24"/>
+            <TextBlock Text="显示名称" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondary}" FontSize="13"
+                       Grid.Row="0" Grid.Column="0"/>
+            <TextBox x:Name="NameBox" Grid.Row="0" Grid.Column="1" Margin="0,6"
+                     Height="32"/>
 
-            <TextBlock Text="进程名:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
-            <TextBox x:Name="ExeBox" Grid.Row="1" Grid.Column="1" Margin="4,2" Height="24"/>
+            <TextBlock Text="进程名" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondary}" FontSize="13"
+                       Grid.Row="1" Grid.Column="0"/>
+            <TextBox x:Name="ExeBox" Grid.Row="1" Grid.Column="1" Margin="0,6"
+                     Height="32"/>
 
-            <TextBlock Text="保存间隔:" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0"/>
-            <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1" Margin="4,2">
-                <TextBox x:Name="IntervalBox" Width="60" Height="24" Text="5"/>
-                <TextBlock Text=" 分钟" VerticalAlignment="Center"/>
+            <TextBlock Text="保存间隔" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondary}" FontSize="13"
+                       Grid.Row="2" Grid.Column="0"/>
+            <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
+                        VerticalAlignment="Center" Margin="0,6">
+                <TextBox x:Name="IntervalBox" Width="64" Height="32" Text="5"/>
+                <TextBlock Text=" 分钟" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondary}" FontSize="13"/>
             </StackPanel>
 
-            <CheckBox x:Name="EnabledCheck" Content="启用" Grid.Row="3" Grid.Column="1"
-                      IsChecked="True" Margin="4,2"/>
+            <CheckBox x:Name="EnabledCheck" Content="启用"
+                      Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
         </Grid>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="取消" Width="70" Height="28" IsCancel="True" Margin="0,0,8,0"/>
-            <Button Content="确定" Width="70" Height="28" IsDefault="True" Click="OnOkClick"/>
+        <!-- Action buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button Content="取消" Style="{StaticResource GhostButton}"
+                    Height="36" Width="80" IsCancel="True" Margin="0,0,10,0"/>
+            <Button Content="确定" Style="{StaticResource PrimaryButton}"
+                    Height="36" Width="80" IsDefault="True" Click="OnOkClick"/>
         </StackPanel>
     </StackPanel>
 </Window>

@@ -1,10 +1,31 @@
 <Window x:Class="AutoSaver.Views.ProcessPickerDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="选择正在运行的程序" Height="350" Width="300"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="选择正在运行的程序" Height="380" Width="320"
+        Background="{StaticResource BgColor}"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
-    <DockPanel Margin="8">
-        <TextBlock DockPanel.Dock="Top" Text="双击选择进程：" Margin="0,0,0,6"/>
-        <ListBox x:Name="ProcessList" DisplayMemberPath="DisplayName"
-                 MouseDoubleClick="OnItemDoubleClick"/>
-    </DockPanel>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="选择正在运行的程序" FontSize="16" FontWeight="SemiBold"
+                   Foreground="{StaticResource TextPrimary}" Margin="0,0,0,14"/>
+
+        <TextBox x:Name="SearchBox" Grid.Row="1" Height="34" Margin="0,0,0,10"
+                 TextChanged="OnSearchTextChanged">
+            <TextBox.Tag>搜索进程名...</TextBox.Tag>
+        </TextBox>
+
+        <Border Grid.Row="2" Background="{StaticResource SurfaceColor}"
+                CornerRadius="6" Padding="4">
+            <ListBox x:Name="ProcessList"
+                     Background="Transparent" BorderThickness="0"
+                     Foreground="{StaticResource TextPrimary}" FontSize="13"
+                     MouseDoubleClick="OnItemDoubleClick"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+        </Border>
+    </Grid>
 </Window>
