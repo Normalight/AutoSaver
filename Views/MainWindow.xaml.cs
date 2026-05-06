@@ -14,6 +14,7 @@ using System.Windows.Media.Imaging;
 using AutoSaver.Models;
 using AutoSaver.Services;
 using Microsoft.Win32;
+using System.Windows.Threading;
 
 namespace AutoSaver.Views
 {
@@ -38,6 +39,34 @@ namespace AutoSaver.Views
 
         public event Action<ProgramItem> ProgramAdded;
         public event Action<string> ProgramDeleted;
+
+        private DispatcherTimer _countdownTimer;
+        private DateTime _nextSaveTime;
+
+        public void SetNextSaveTime(int intervalSec)
+        {
+            _nextSaveTime = DateTime.Now.AddSeconds(intervalSec);
+            if (_countdownTimer == null)
+            {
+                _countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                _countdownTimer.Tick += OnCountdownTick;
+                _countdownTimer.Start();
+            }
+            CountdownCapsule.Visibility = Visibility.Visible;
+        }
+
+        private void OnCountdownTick(object sender, EventArgs e)
+        {
+            var remaining = _nextSaveTime - DateTime.Now;
+            if (remaining <= TimeSpan.Zero)
+            {
+                CountdownLabel.Text = "0s";
+                return;
+            }
+            CountdownLabel.Text = remaining.TotalSeconds >= 60
+                ? $"{(int)remaining.TotalMinutes}m {remaining.Seconds:D2}s"
+                : $"{(int)remaining.TotalSeconds}s";
+        }
 
         public MainWindow(List<ProgramItem> programs)
         {
@@ -279,6 +308,7 @@ namespace AutoSaver.Views
 
         private void OnCloseClick(object sender, RoutedEventArgs e)
         {
+            _countdownTimer?.Stop();
             Close();
         }
 
