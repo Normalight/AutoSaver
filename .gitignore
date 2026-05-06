@@ -31,3 +31,8 @@ desktop.ini
 .vscode/
 *.swp
 *.swo
+
+# Dev tool configs (local only)
+CLAUDE.md
+.codebuddy/
+
