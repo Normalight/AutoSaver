@@ -33,11 +33,41 @@ jobs:
         run: |
           msbuild AutoSaver.csproj /p:Configuration=Release /v:minimal /nologo
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.version.outputs.value }}'
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC not found at $iscc" }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & $iscc /DMyAppVersion=$ver "installer\autosaver.iss"
+
+      - name: Package Portal (portable zip)
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.version.outputs.value }}'
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $zipPath = "dist/AutoSaver-$ver-Portal.zip"
+          Compress-Archive -Path @(
+            "bin/Release/autosaver.exe",
+            "bin/Release/app-icon.ico",
+            "bin/Release/VERSION",
+            "bin/Release/CHANGELOG.md"
+          ) -DestinationPath $zipPath -Force
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: autosaver-${{ steps.version.outputs.value }}
-          path: bin/Release/autosaver.exe
+          name: autosaver-${{ steps.version.outputs.value }}-packages
+          path: |
+            bin/Release/autosaver.exe
+            dist/AutoSaver-${{ steps.version.outputs.value }}-Setup.exe
+            dist/AutoSaver-${{ steps.version.outputs.value }}-Portal.zip
 
       - name: Extract release notes
         id: release_notes
@@ -59,6 +89,9 @@ jobs:
         with:
           name: AutoSaver ${{ steps.version.outputs.value }}
           body_path: release-notes.md
-          files: bin/Release/autosaver.exe
+          files: |
+            bin/Release/autosaver.exe
+            dist/AutoSaver-${{ steps.version.outputs.value }}-Setup.exe
+            dist/AutoSaver-${{ steps.version.outputs.value }}-Portal.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
