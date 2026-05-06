@@ -5,6 +5,19 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-05-06
+
+### Fixed
+- Dark mode: ComboBox text now correctly uses theme foreground color instead of black.
+- Adding a program no longer creates duplicate entries in the list.
+- Process picker now has title bar, close button, cancel/confirm buttons, keyboard Enter support, and proper selection highlight.
+- Process icons now use `QueryFullProcessImageName` as fallback when `MainModule` fails, fixing missing icons.
+- Notification overlay reliably centers at top of screen.
+
+### Changed
+- **Unified save timer**: replaced per-program timers with a single global timer that saves programs sequentially.
+- Program cards now show the executable's icon.
+
 ## [1.3.4] - 2026-05-06
 
 ### Changed
