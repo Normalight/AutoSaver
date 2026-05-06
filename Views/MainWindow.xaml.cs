@@ -60,7 +60,8 @@ namespace AutoSaver.Views
             var remaining = _nextSaveTime - DateTime.Now;
             if (remaining <= TimeSpan.Zero)
             {
-                CountdownLabel.Text = "0s";
+                _countdownTimer.Stop();
+                CountdownCapsule.Visibility = Visibility.Collapsed;
                 return;
             }
             CountdownLabel.Text = remaining.TotalSeconds >= 60
