@@ -106,20 +106,50 @@ namespace AutoSaver.Services
                 var hwnds = WindowService.GetWindowsByExe(prog.Exe);
                 var timestamp = DateTime.Now.ToString("HH:mm:ss");
 
-                if (hwnds.Count == 0)
+                bool processExists = false;
+                try
                 {
-                    // Program may be running but no visible window — needs attention
+                    var exeName = prog.Exe.ToLowerInvariant();
+                    if (exeName.EndsWith(".exe"))
+                        exeName = exeName.Substring(0, exeName.Length - 4);
+                    processExists = Process.GetProcessesByName(exeName).Length > 0;
+                }
+                catch { }
+
+                if (hwnds.Count == 0 && processExists)
+                {
+                    // Process running but no visible window — may need manual save
                     SaveDone?.Invoke(prog.Id, timestamp, 0);
                     SaveCompleted?.Invoke(new SaveResult
                     {
                         Program = prog,
                         Status = SaveStatus.NeedsConfirm,
-                        Message = "未找到可见窗口，请手动确认",
+                        Message = "程序运行中但无可见窗口，请手动确认保存",
                         WindowCount = 0,
                         JumpAction = () =>
                         {
-                            try { Process.Start(prog.Exe); } catch { }
+                            try
+                            {
+                                var all = WindowService.GetAllWindowsByExe(prog.Exe);
+                                if (all.Count > 0)
+                                    WindowService.BringToFront(all[0]);
+                            }
+                            catch { }
                         }
+                    });
+                    return;
+                }
+
+                if (hwnds.Count == 0)
+                {
+                    // No process, no window — save skipped
+                    SaveDone?.Invoke(prog.Id, timestamp, 0);
+                    SaveCompleted?.Invoke(new SaveResult
+                    {
+                        Program = prog,
+                        Status = SaveStatus.Failed,
+                        Message = "程序未运行，保存跳过",
+                        WindowCount = 0
                     });
                     return;
                 }

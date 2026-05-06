@@ -32,6 +32,14 @@ namespace AutoSaver.Services
         [DllImport("user32.dll")]
         private static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
 
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        private const int SW_RESTORE = 9;
+
         public static List<IntPtr> GetWindowsByExe(string exeName)
         {
             var pids = new HashSet<int>();
@@ -82,6 +90,42 @@ namespace AutoSaver.Services
             var sb = new StringBuilder(256);
             GetWindowText(hWnd, sb, sb.Capacity);
             return sb.ToString();
+        }
+
+        public static List<IntPtr> GetAllWindowsByExe(string exeName)
+        {
+            var pids = new HashSet<int>();
+            var exeLower = exeName.ToLowerInvariant();
+
+            foreach (var proc in Process.GetProcesses())
+            {
+                try
+                {
+                    if (proc.ProcessName.ToLowerInvariant() == exeLower
+                        || (proc.ProcessName + ".exe").ToLowerInvariant() == exeLower)
+                        pids.Add(proc.Id);
+                }
+                catch { }
+            }
+
+            if (pids.Count == 0) return new List<IntPtr>();
+
+            var hwnds = new List<IntPtr>();
+            EnumWindows((hWnd, _) =>
+            {
+                GetWindowThreadProcessId(hWnd, out var pid);
+                if (pids.Contains((int)pid))
+                    hwnds.Add(hWnd);
+                return true;
+            }, IntPtr.Zero);
+
+            return hwnds;
+        }
+
+        public static void BringToFront(IntPtr hWnd)
+        {
+            ShowWindow(hWnd, SW_RESTORE);
+            SetForegroundWindow(hWnd);
         }
     }
 }
