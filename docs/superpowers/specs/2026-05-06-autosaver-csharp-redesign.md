@@ -38,7 +38,8 @@ AutoSaver/
 │   └── WindowService.cs       # P/Invoke 窗口操作
 └── Views/
     ├── MainWindow.xaml/.cs    # 主窗口，Show 时 new，关闭时销毁
-    └── AddEditDialog.xaml/.cs # 添加/编辑程序对话框
+    ├── AddEditDialog.xaml/.cs # 添加/编辑程序对话框
+    └── ProcessPickerDialog.xaml/.cs  # 运行中进程选取列表
 ```
 
 ## INI 配置文件
@@ -162,10 +163,34 @@ class SaveScheduler
 
 ### 添加/编辑对话框
 
-- 显示名称（TextBox）
-- 进程名（TextBox + 从运行中选择下拉 + 刷新按钮）
-- 保存间隔（NumericUpDown，分钟）
-- 启用（CheckBox）
+```
+┌─ 添加程序 ──────────────────────────────┐
+│  [📁 选择本地程序]  [📋 正在运行中选取]   │
+│                                          │
+│  显示名称: [___________________________] │
+│  进程名:   [___________________________] │
+│  保存间隔: [5] 分钟                      │
+│  ☑ 启用                                 │
+│                [取消]  [确定]             │
+└──────────────────────────────────────────┘
+```
+
+两种添加方式，均为图标按钮：
+
+| 按钮 | 行为 |
+|---|---|
+| 📁 选择本地程序 | 打开 OpenFileDialog，过滤 `*.exe`。初始目录 `C:\Program Files`（不存在则回退桌面）。选中后直接覆盖进程名和显示名称（不留原名） |
+| 📋 正在运行中选取 | 弹出 ProcessPickerDialog（简单列表窗口），列出当前所有非系统进程。用户双击选中后覆盖进程名和显示名称 |
+
+规则：
+- 显示名称不做首字母大写，保持原始进程名
+- 文件对话框过滤仅 `*.exe`；进程选取过滤系统进程（svchost.exe, csrss.exe, system, smss.exe, wininit.exe, services.exe, lsass.exe, winlogon.exe, explorer.exe, taskmgr.exe, autosaver.exe）
+- 两个按钮覆盖已有内容不提示（按钮意图明确）
+- 编辑模式同样可用两个按钮（允许更换目标进程）
+
+### ProcessPickerDialog
+
+简单的模态窗口，显示一个 ListView 列出当前所有非系统进程名（去重、字母排序）。双击或选中后点确定直接关闭窗口返回进程名。
 
 ### 托盘菜单
 
