@@ -4,11 +4,13 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Forms;
 using AutoSaver.Models;
 using AutoSaver.Services;
 using AutoSaver.Views;
-using MenuItem = System.Windows.Forms.MenuItem;
+using NotifyIcon = System.Windows.Forms.NotifyIcon;
+using ContextMenuStrip = System.Windows.Forms.ContextMenuStrip;
+using ToolStripMenuItem = System.Windows.Forms.ToolStripMenuItem;
+using ToolStripSeparator = System.Windows.Forms.ToolStripSeparator;
 
 namespace AutoSaver
 {
