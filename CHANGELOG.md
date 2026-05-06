@@ -5,6 +5,23 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-06
+
+### Added
+- Per top-level window **HWND** countdown and save targeting: each visible window has its own timer; **Ctrl+S** is sent only when that window is foreground.
+- Main list **expandable groups** when a monitored executable has multiple windows; child cards show **product name · window title** and per-window countdown text.
+- **PID snapshot cache** (short TTL) plus **time-throttled** full window enumeration to reduce `Process.GetProcesses` / `EnumWindows` work each tick.
+- Foreground **transition** handling: switching to a window whose countdown already hit zero triggers save and reset.
+- **Async** post-save dialog detection (`Task.Delay` on thread pool) so the timer callback is not blocked.
+
+### Changed
+- Program cards and title-bar capsule use the **short exe stem** (e.g. `sai2`) as the primary label; long **FileDescription** / product strings appear only under each window row or the single-window subtitle.
+- **One config entry per exe**: duplicates in `autosaver.ini` are merged on load (first wins); adding the same exe again is rejected with a clear message.
+- **Stable HWND ownership** when duplicate exe entries could exist: first program in sort order keeps a HWND slot.
+
+### Fixed
+- Timer thread no longer sleeps during save follow-up; reduces risk of stalled ticks under load.
+
 ## [1.4.0] - 2026-05-06
 
 ### Added
