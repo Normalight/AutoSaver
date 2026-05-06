@@ -25,6 +25,9 @@ namespace AutoSaver.Services
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
         [DllImport("user32.dll")]
+        private static extern bool IsWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
         private static extern bool IsWindowVisible(IntPtr hWnd);
 
         [DllImport("user32.dll")]
@@ -58,25 +61,98 @@ namespace AutoSaver.Services
 
         private const int SW_RESTORE = 9;
 
-        public static List<IntPtr> GetWindowsByExe(string exeName)
+        private static readonly object PidSnapshotLock = new object();
+        private static DateTime _pidSnapshotUtc;
+        private static Dictionary<string, HashSet<int>> _pidIndex;
+        private static readonly TimeSpan PidSnapshotTtl = TimeSpan.FromSeconds(2);
+
+        /// <summary>HWND 是否仍为有效窗口句柄（用于剔除已关闭窗口）。</summary>
+        public static bool IsWindowAlive(IntPtr hWnd)
         {
-            var pids = new HashSet<int>();
-            var exeLower = exeName.ToLowerInvariant();
+            return hWnd != IntPtr.Zero && IsWindow(hWnd);
+        }
+
+        /// <summary>使进程 PID 快照失效（下次查询会重建）。</summary>
+        public static void InvalidatePidSnapshot()
+        {
+            lock (PidSnapshotLock)
+            {
+                _pidIndex = null;
+            }
+        }
+
+        private static void EnsurePidSnapshotFresh()
+        {
+            lock (PidSnapshotLock)
+            {
+                if (_pidIndex != null && DateTime.UtcNow - _pidSnapshotUtc < PidSnapshotTtl)
+                    return;
+                RebuildPidIndexUnlocked();
+                _pidSnapshotUtc = DateTime.UtcNow;
+            }
+        }
+
+        private static void RebuildPidIndexUnlocked()
+        {
+            var index = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+
+            void AddPid(string key, int pid)
+            {
+                if (string.IsNullOrEmpty(key)) return;
+                if (!index.TryGetValue(key, out var set))
+                {
+                    set = new HashSet<int>();
+                    index[key] = set;
+                }
+
+                set.Add(pid);
+            }
 
             foreach (var proc in Process.GetProcesses())
             {
                 try
                 {
-                    if (proc.ProcessName.ToLowerInvariant() == exeLower
-                        || (proc.ProcessName + ".exe").ToLowerInvariant() == exeLower)
-                        pids.Add(proc.Id);
+                    var pn = proc.ProcessName;
+                    if (string.IsNullOrEmpty(pn)) continue;
+                    var lower = pn.ToLowerInvariant();
+                    AddPid(lower, proc.Id);
+                    AddPid(lower + ".exe", proc.Id);
                 }
                 catch { }
             }
 
-            if (pids.Count == 0) return new List<IntPtr>();
+            _pidIndex = index;
+        }
 
+        private static HashSet<int> ResolvePidsForExe(string exeName)
+        {
+            EnsurePidSnapshotFresh();
+            lock (PidSnapshotLock)
+            {
+                if (_pidIndex == null) return new HashSet<int>();
+
+                var file = Path.GetFileName((exeName ?? "").Trim());
+                if (string.IsNullOrEmpty(file)) return new HashSet<int>();
+
+                var exeLower = file.ToLowerInvariant();
+                if (_pidIndex.TryGetValue(exeLower, out var set) && set.Count > 0)
+                    return new HashSet<int>(set);
+
+                var baseName = Path.GetFileNameWithoutExtension(file);
+                if (!string.IsNullOrEmpty(baseName)
+                    && _pidIndex.TryGetValue(baseName.ToLowerInvariant(), out var set2)
+                    && set2.Count > 0)
+                    return new HashSet<int>(set2);
+
+                return new HashSet<int>();
+            }
+        }
+
+        private static List<IntPtr> EnumVisibleEnabledTopLevelForPids(HashSet<int> pids)
+        {
             var hwnds = new List<IntPtr>();
+            if (pids == null || pids.Count == 0) return hwnds;
+
             EnumWindows((hWnd, _) =>
             {
                 if (!IsWindowVisible(hWnd)) return true;
@@ -88,6 +164,12 @@ namespace AutoSaver.Services
             }, IntPtr.Zero);
 
             return hwnds;
+        }
+
+        public static List<IntPtr> GetWindowsByExe(string exeName)
+        {
+            var pids = ResolvePidsForExe(exeName);
+            return EnumVisibleEnabledTopLevelForPids(pids);
         }
 
         /// <summary>
@@ -184,20 +266,7 @@ namespace AutoSaver.Services
 
         public static List<IntPtr> GetAllWindowsByExe(string exeName)
         {
-            var pids = new HashSet<int>();
-            var exeLower = exeName.ToLowerInvariant();
-
-            foreach (var proc in Process.GetProcesses())
-            {
-                try
-                {
-                    if (proc.ProcessName.ToLowerInvariant() == exeLower
-                        || (proc.ProcessName + ".exe").ToLowerInvariant() == exeLower)
-                        pids.Add(proc.Id);
-                }
-                catch { }
-            }
-
+            var pids = ResolvePidsForExe(exeName);
             if (pids.Count == 0) return new List<IntPtr>();
 
             var hwnds = new List<IntPtr>();
@@ -226,20 +295,7 @@ namespace AutoSaver.Services
 
         public static int GetWindowCountByExe(string exeName)
         {
-            var pids = new HashSet<int>();
-            var exeLower = exeName.ToLowerInvariant();
-
-            foreach (var proc in Process.GetProcesses())
-            {
-                try
-                {
-                    if (proc.ProcessName.ToLowerInvariant() == exeLower
-                        || (proc.ProcessName + ".exe").ToLowerInvariant() == exeLower)
-                        pids.Add(proc.Id);
-                }
-                catch { }
-            }
-
+            var pids = ResolvePidsForExe(exeName);
             if (pids.Count == 0) return 0;
 
             int count = 0;

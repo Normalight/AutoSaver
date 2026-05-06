@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using AutoSaver.Models;
 using Timer = System.Timers.Timer;
@@ -74,6 +75,11 @@ namespace AutoSaver.Services
         private IntPtr? _lastForegroundHwnd;
         private int _tickGate;
 
+        /// <summary>距上次全量枚举窗口的最小间隔（减轻 EnumWindows / 快照压力）。</summary>
+        private static readonly TimeSpan WindowScanInterval = TimeSpan.FromSeconds(1.5);
+
+        private DateTime _nextFullWindowScanUtc = DateTime.MinValue;
+
         public event Action<string, string, int> SaveDone;
         public event Action<SaveResult> SaveCompleted;
         public event Action<FocusCountdownSnapshot> FocusCountdown;
@@ -96,6 +102,7 @@ namespace AutoSaver.Services
             lock (_lock)
             {
                 StopInternal();
+                _nextFullWindowScanUtc = DateTime.MinValue;
                 _timer = new Timer(TickMs);
                 _timer.AutoReset = true;
                 _timer.Elapsed += OnSecondTick;
@@ -124,6 +131,8 @@ namespace AutoSaver.Services
                 if (_programs.Any(p => p.Program.Id == prog.Id)) return;
                 _programs.Add(new ProgramState { Program = prog, Running = false });
             }
+
+            WindowService.InvalidatePidSnapshot();
         }
 
         public void RemoveProgram(string programId)
@@ -134,6 +143,8 @@ namespace AutoSaver.Services
                 foreach (var key in _windowTimers.Keys.Where(k => _windowTimers[k].ProgramId == programId).ToList())
                     _windowTimers.Remove(key);
             }
+
+            WindowService.InvalidatePidSnapshot();
         }
 
         public void UpdateProgram(ProgramItem prog)
@@ -149,6 +160,8 @@ namespace AutoSaver.Services
                 foreach (var kv in _windowTimers.Where(x => x.Value.ProgramId == prog.Id).ToList())
                     kv.Value.RemainingSec = EffectiveInterval(prog);
             }
+
+            WindowService.InvalidatePidSnapshot();
         }
 
         public void SetRunning(string programId, bool running)
@@ -169,6 +182,8 @@ namespace AutoSaver.Services
                 _programs.Clear();
                 _windowTimers.Clear();
             }
+
+            WindowService.InvalidatePidSnapshot();
         }
 
         private void StopInternal()
@@ -196,7 +211,7 @@ namespace AutoSaver.Services
         {
             var live = new HashSet<IntPtr>();
 
-            foreach (var s in _programs)
+            foreach (var s in _programs.OrderBy(x => x.Program.Id, StringComparer.Ordinal))
             {
                 if (!s.Program.Enabled || !s.Running) continue;
 
@@ -213,7 +228,7 @@ namespace AutoSaver.Services
                 foreach (var hwnd in hwnds)
                 {
                     live.Add(hwnd);
-                    if (!_windowTimers.TryGetValue(hwnd, out var slot))
+                    if (!_windowTimers.TryGetValue(hwnd, out _))
                     {
                         _windowTimers[hwnd] = new WindowSlot
                         {
@@ -221,15 +236,31 @@ namespace AutoSaver.Services
                             RemainingSec = EffectiveInterval(s.Program)
                         };
                     }
-                    else
-                    {
-                        slot.ProgramId = s.Program.Id;
-                    }
                 }
             }
 
             foreach (var key in _windowTimers.Keys.Where(k => !live.Contains(k)).ToList())
                 _windowTimers.Remove(key);
+        }
+
+        private void PruneDeadHwndsUnlocked()
+        {
+            foreach (var key in _windowTimers.Keys.ToList())
+            {
+                if (!WindowService.IsWindowAlive(key))
+                    _windowTimers.Remove(key);
+            }
+        }
+
+        /// <summary>在非全量枚举周期内也能及时去掉已禁用/未运行的槽位。</summary>
+        private void RemoveSlotsForInactiveProgramsUnlocked()
+        {
+            foreach (var kv in _windowTimers.ToList())
+            {
+                var st = FindProgramUnlocked(kv.Value.ProgramId);
+                if (st == null || !st.Program.Enabled || !st.Running)
+                    _windowTimers.Remove(kv.Key);
+            }
         }
 
         private static void AddSave(List<(ProgramItem Prog, IntPtr Hwnd)> list, ProgramItem p, IntPtr hwnd)
@@ -268,7 +299,18 @@ namespace AutoSaver.Services
 
                 lock (_lock)
                 {
-                    SyncWindowTimersUnlocked();
+                    var utc = DateTime.UtcNow;
+                    if (utc >= _nextFullWindowScanUtc)
+                    {
+                        SyncWindowTimersUnlocked();
+                        _nextFullWindowScanUtc = utc.Add(WindowScanInterval);
+                    }
+                    else
+                    {
+                        PruneDeadHwndsUnlocked();
+                    }
+
+                    RemoveSlotsForInactiveProgramsUnlocked();
 
                     if (transition
                         && _windowTimers.TryGetValue(fgHwnd, out var pend)
@@ -308,7 +350,7 @@ namespace AutoSaver.Services
             }
 
             foreach (var item in toSave)
-                DoSaveWindow(item.Prog, item.Hwnd);
+                QueueSaveWindow(item.Prog, item.Hwnd);
         }
 
         private void RaiseUiTick(IntPtr foregroundHwndForCapsule)
@@ -368,77 +410,87 @@ namespace AutoSaver.Services
             return list;
         }
 
-        private void DoSaveWindow(ProgramItem prog, IntPtr expectedHwnd)
+        private void QueueSaveWindow(ProgramItem prog, IntPtr expectedHwnd)
         {
-            try
+            var progRef = prog;
+            var hwndRef = expectedHwnd;
+            Task.Run(async () =>
             {
-                var timestamp = DateTime.Now.ToString("HH:mm:ss");
-
-                if (WindowService.GetForegroundWindowHandle() != expectedHwnd)
-                    return;
-
-                if (!WindowService.TryMatchForegroundExe(prog.Exe, out var hwnd))
-                    return;
-
-                if (hwnd != expectedHwnd)
-                    return;
-
-                var before = WindowService.GetWindowCountByExe(prog.Exe);
-                if (before == 0)
+                try
                 {
-                    SaveDone?.Invoke(prog.Id, timestamp, 0);
-                    return;
+                    await RunSaveWindowAsync(progRef, hwndRef).ConfigureAwait(false);
                 }
-
-                WindowService.SendCtrlSToWindows(new List<IntPtr> { hwnd });
-
-                System.Threading.Thread.Sleep(350);
-
-                var after = WindowService.GetWindowCountByExe(prog.Exe);
-
-                if (after > before)
+                catch (Exception ex)
                 {
-                    SaveDone?.Invoke(prog.Id, timestamp, 1);
+                    Debug.WriteLine($"SaveScheduler.RunSaveWindowAsync failed for {progRef.Name}: {ex.Message}");
                     SaveCompleted?.Invoke(new SaveResult
                     {
-                        Program = prog,
-                        Status = SaveStatus.NeedsConfirm,
-                        Message = "检测到保存对话框，请手动选择保存位置",
-                        WindowCount = 1,
-                        JumpAction = () =>
-                        {
-                            try
-                            {
-                                var all = WindowService.GetAllWindowsByExe(prog.Exe);
-                                if (all.Count > 0)
-                                    WindowService.BringToFront(all[all.Count - 1]);
-                            }
-                            catch { }
-                        }
+                        Program = progRef,
+                        Status = SaveStatus.Failed,
+                        Message = ex.Message,
+                        WindowCount = 0
                     });
-                    return;
                 }
+            });
+        }
 
+        private async Task RunSaveWindowAsync(ProgramItem prog, IntPtr expectedHwnd)
+        {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+
+            if (WindowService.GetForegroundWindowHandle() != expectedHwnd)
+                return;
+
+            if (!WindowService.TryMatchForegroundExe(prog.Exe, out var hwnd))
+                return;
+
+            if (hwnd != expectedHwnd)
+                return;
+
+            var before = WindowService.GetWindowCountByExe(prog.Exe);
+            if (before == 0)
+            {
+                SaveDone?.Invoke(prog.Id, timestamp, 0);
+                return;
+            }
+
+            WindowService.SendCtrlSToWindows(new List<IntPtr> { hwnd });
+
+            await Task.Delay(350).ConfigureAwait(false);
+
+            var after = WindowService.GetWindowCountByExe(prog.Exe);
+
+            if (after > before)
+            {
                 SaveDone?.Invoke(prog.Id, timestamp, 1);
                 SaveCompleted?.Invoke(new SaveResult
                 {
                     Program = prog,
-                    Status = SaveStatus.Success,
-                    Message = "已向前台窗口发送 Ctrl+S（是否写入文件由目标程序决定）",
-                    WindowCount = 1
+                    Status = SaveStatus.NeedsConfirm,
+                    Message = "检测到保存对话框，请手动选择保存位置",
+                    WindowCount = 1,
+                    JumpAction = () =>
+                    {
+                        try
+                        {
+                            var all = WindowService.GetAllWindowsByExe(prog.Exe);
+                            if (all.Count > 0)
+                                WindowService.BringToFront(all[all.Count - 1]);
+                        }
+                        catch { }
+                    }
                 });
+                return;
             }
-            catch (Exception ex)
+
+            SaveDone?.Invoke(prog.Id, timestamp, 1);
+            SaveCompleted?.Invoke(new SaveResult
             {
-                Debug.WriteLine($"SaveScheduler.DoSaveWindow failed for {prog.Name}: {ex.Message}");
-                SaveCompleted?.Invoke(new SaveResult
-                {
-                    Program = prog,
-                    Status = SaveStatus.Failed,
-                    Message = ex.Message,
-                    WindowCount = 0
-                });
-            }
+                Program = prog,
+                Status = SaveStatus.Success,
+                Message = "已向前台窗口发送 Ctrl+S（是否写入文件由目标程序决定）",
+                WindowCount = 1
+            });
         }
     }
 }
