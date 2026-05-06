@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.6] - 2026-05-06
+
+### Fixed
+- **CI / MSBuild**: removed use of `SecurityProtocolType.Tls13` in `UpdateService` static ctor — some GitHub Actions / reference assemblies only expose up to TLS 1.2 in the enum, causing **CS0117** (`Tls13` does not exist).
+
 ## [1.5.5] - 2026-05-06
 
 ### Changed

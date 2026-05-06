@@ -50,15 +50,8 @@ namespace AutoSaver.Services
             try
             {
                 // GitHub 要求 TLS 1.2+；部分环境默认仍启用 SSL3 / TLS1.0 会导致握手失败。
+                // 不显式引用 Tls13：部分 CI 参考程序集未包含该枚举会导致 CS0117。
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                try
-                {
-                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls13;
-                }
-                catch
-                {
-                    // 旧系统可能无 Tls13 枚举：忽略
-                }
             }
             catch { }
         }
