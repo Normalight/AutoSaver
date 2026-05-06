@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:conv="clr-namespace:AutoSaver.Converters"
-        xmlns:wpc="clr-namespace:System.Windows.Controls;assembly=PresentationFramework"
         Title="AutoSaver" Height="480" Width="300"
         MinHeight="360" MinWidth="260"
         WindowStartupLocation="CenterScreen"
@@ -15,8 +14,6 @@
         <conv:BoolToToggleColorConverter x:Key="BoolToToggleColor"/>
         <conv:BoolToToggleFillConverter x:Key="BoolToToggleFill"/>
         <conv:BoolToToggleTipConverter x:Key="BoolToToggleTip"/>
-        <wpc:BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
     </Window.Resources>
 
     <shell:WindowChrome.WindowChrome>
@@ -100,141 +97,52 @@
                                         </Style>
                                     </Border.Style>
                                     <Grid>
-                                        <!-- 单窗口、禁用、未运行、无窗口：扁平三行卡片 -->
-                                        <Grid Visibility="{Binding HasMultipleWindows, Converter={StaticResource InverseBoolToVis}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Grid.Column="0" VerticalAlignment="Center">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <Grid Grid.Column="0" VerticalAlignment="Center">
+                                            <Image Grid.Column="0" Source="{Binding Icon}" Width="20" Height="20"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Image Grid.Column="0" Source="{Binding Icon}" Width="20" Height="20"
-                                                       VerticalAlignment="Center" Margin="0,0,8,0"
-                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                <Grid Grid.Column="1" VerticalAlignment="Center">
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Ellipse Grid.Row="0" Grid.Column="0" Width="6" Height="6" Fill="{Binding StatusColor}"
-                                                             VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="1"
-                                                               Text="{Binding ExeSummary}" Style="{StaticResource Caption}"
-                                                               Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Exe}"/>
-                                                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                                                               Text="{Binding TimerStatus}" Style="{StaticResource Caption}"
-                                                               Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource TextMuted}"/>
-                                                </Grid>
+                                                <Ellipse Grid.Row="0" Grid.Column="0" Width="6" Height="6" Fill="{Binding StatusColor}"
+                                                         VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                                           Text="{Binding ExeSummary}" Style="{StaticResource Caption}"
+                                                           Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Exe}"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                                           Text="{Binding TimerStatus}" Style="{StaticResource Caption}"
+                                                           Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource TextMuted}"/>
                                             </Grid>
-                                            <Button Grid.Column="1" Style="{StaticResource GhostButton}"
-                                                    Height="28" Width="28" MinWidth="28" Padding="0"
-                                                    Click="OnToggleEnabledClick" Tag="{Binding}"
-                                                    ToolTip="{Binding Enabled, Converter={StaticResource BoolToToggleTip}}">
-                                                <Path Data="{Binding Enabled, Converter={StaticResource BoolToPausePlayPath}}"
-                                                      Stroke="{Binding Enabled, Converter={StaticResource BoolToToggleColor}}"
-                                                      StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                      Fill="{Binding Enabled, Converter={StaticResource BoolToToggleFill}}"
-                                                      Width="13" Height="13" Stretch="Uniform"/>
-                                            </Button>
                                         </Grid>
-
-                                        <!-- 多窗口：可展开查看各窗口倒计时 -->
-                                        <Expander Visibility="{Binding HasMultipleWindows, Converter={StaticResource BoolToVis}}"
-                                                  IsExpanded="{Binding IsExpanded, Mode=OneWay}"
-                                                  Expanded="OnProgramGroupExpandedChanged"
-                                                  Collapsed="OnProgramGroupExpandedChanged"
-                                                  Tag="{Binding ProgramId}"
-                                                  Background="Transparent" BorderThickness="0" Padding="0">
-                                            <Expander.Header>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid Grid.Column="0" VerticalAlignment="Center">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                            <ColumnDefinition Width="*"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <Image Grid.Column="0" Source="{Binding Icon}" Width="20" Height="20"
-                                                               VerticalAlignment="Center" Margin="0,0,8,0"
-                                                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        <Grid Grid.Column="1" VerticalAlignment="Center">
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition Height="Auto"/>
-                                                                <RowDefinition Height="Auto"/>
-                                                                <RowDefinition Height="Auto"/>
-                                                            </Grid.RowDefinitions>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                            </Grid.ColumnDefinitions>
-                                                            <Ellipse Grid.Row="0" Grid.Column="0" Width="6" Height="6" Fill="{Binding StatusColor}"
-                                                                     VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
-                                                                       Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"
-                                                                       TextTrimming="CharacterEllipsis"/>
-                                                            <TextBlock Grid.Row="1" Grid.Column="1"
-                                                                       Text="{Binding ExeSummary}" Style="{StaticResource Caption}"
-                                                                       Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Exe}"/>
-                                                            <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                                                                       Text="{Binding TimerStatus}" Style="{StaticResource Caption}"
-                                                                       Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
-                                                                       Foreground="{DynamicResource TextMuted}"/>
-                                                        </Grid>
-                                                    </Grid>
-                                                    <Button Grid.Column="1" Style="{StaticResource GhostButton}"
-                                                            Height="28" Width="28" MinWidth="28" Padding="0"
-                                                            Click="OnToggleEnabledClick" Tag="{Binding}"
-                                                            ToolTip="{Binding Enabled, Converter={StaticResource BoolToToggleTip}}">
-                                                        <Path Data="{Binding Enabled, Converter={StaticResource BoolToPausePlayPath}}"
-                                                              Stroke="{Binding Enabled, Converter={StaticResource BoolToToggleColor}}"
-                                                              StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                              Fill="{Binding Enabled, Converter={StaticResource BoolToToggleFill}}"
-                                                              Width="13" Height="13" Stretch="Uniform"/>
-                                                    </Button>
-                                                </Grid>
-                                            </Expander.Header>
-                                            <ItemsControl ItemsSource="{Binding SubWindows}" Margin="0,4,0,0">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Vertical"/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Margin="10,0,0,6" Padding="8,6" CornerRadius="8"
-                                                                Background="{DynamicResource BgTertiary}"
-                                                                BorderBrush="{DynamicResource DividerColor}" BorderThickness="1">
-                                                            <Grid>
-                                                                <Grid.RowDefinitions>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                </Grid.RowDefinitions>
-                                                                <TextBlock Grid.Row="0" Text="{Binding Headline}" FontSize="12" FontWeight="SemiBold"
-                                                                           Foreground="{DynamicResource TextPrimary}"
-                                                                           TextTrimming="CharacterEllipsis"/>
-                                                                <TextBlock Grid.Row="1" Text="{Binding TimerStatus}" Style="{StaticResource Caption}"
-                                                                           Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
-                                                                           Foreground="{DynamicResource TextMuted}"/>
-                                                            </Grid>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </Expander>
+                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}"
+                                                Height="28" Width="28" MinWidth="28" Padding="0"
+                                                Click="OnToggleEnabledClick" Tag="{Binding}"
+                                                ToolTip="{Binding Enabled, Converter={StaticResource BoolToToggleTip}}">
+                                            <Path Data="{Binding Enabled, Converter={StaticResource BoolToPausePlayPath}}"
+                                                  Stroke="{Binding Enabled, Converter={StaticResource BoolToToggleColor}}"
+                                                  StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  Fill="{Binding Enabled, Converter={StaticResource BoolToToggleFill}}"
+                                                  Width="13" Height="13" Stretch="Uniform"/>
+                                        </Button>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

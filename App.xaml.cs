@@ -22,7 +22,6 @@ namespace AutoSaver
         private const string SingleInstanceMutexName = "AutoSaver.SingleInstance";
         private static Mutex _singleInstanceMutex;
         private NotifyIcon _tray;
-        private ProcessMonitor _monitor;
         private SaveScheduler _scheduler;
         private List<ProgramItem> _programs;
         private MainWindow _mainWindow;
@@ -75,9 +74,6 @@ namespace AutoSaver
 
             _programs = ConfigService.LoadPrograms();
 
-            _monitor = new ProcessMonitor();
-            _monitor.StatusChanged += OnStatusChanged;
-
             _scheduler = new SaveScheduler();
             _scheduler.SaveDone += OnSaveDone;
             _scheduler.SaveCompleted += OnSaveCompleted;
@@ -89,9 +85,6 @@ namespace AutoSaver
 
             _scheduler.SetInterval(ConfigService.CheckIntervalSec);
             _scheduler.Start();
-
-            _monitor.RefreshPrograms(_programs);
-            _monitor.Start(ConfigService.CheckIntervalSec);
 
             SetupTray();
             ShowMainWindow();
@@ -165,11 +158,7 @@ namespace AutoSaver
             menu.Items.Clear();
 
             foreach (var prog in _programs)
-            {
-                var running = _monitor.GetStatus(prog.Id);
-                var text = (running ? "● " : "○ ") + prog.Name;
-                menu.Items.Add(new ToolStripMenuItem(text) { Enabled = false });
-            }
+                menu.Items.Add(new ToolStripMenuItem(prog.Name) { Enabled = false });
 
             if (_programs.Count > 0)
                 menu.Items.Add(new ToolStripSeparator());
@@ -190,9 +179,6 @@ namespace AutoSaver
             }
 
             _mainWindow = new MainWindow(_programs);
-
-            foreach (var prog in _programs)
-                _mainWindow.UpdateProgramStatus(prog.Id, _monitor.GetStatus(prog.Id));
 
             _mainWindow.ProgramAdded += OnProgramAdded;
             _mainWindow.ProgramDeleted += OnProgramDeleted;
@@ -263,8 +249,6 @@ namespace AutoSaver
         private void ApplySavedSettings()
         {
             _scheduler.SetInterval(ConfigService.CheckIntervalSec);
-            _monitor.Stop();
-            _monitor.Start(ConfigService.CheckIntervalSec);
             Log("Settings updated");
         }
 
@@ -412,15 +396,6 @@ namespace AutoSaver
             });
         }
 
-        private void OnStatusChanged(ProgramItem prog, bool running)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                _mainWindow?.UpdateProgramStatus(prog.Id, running);
-                _scheduler.SetRunning(prog.Id, running);
-            });
-        }
-
         private void OnSaveDone(string programId, string timestamp, int windowCount)
         {
             Dispatcher.Invoke(() =>
@@ -445,7 +420,7 @@ namespace AutoSaver
                 Dispatcher.BeginInvoke((Action)Apply, DispatcherPriority.Normal);
         }
 
-        private void OnProgramListTick(IReadOnlyList<WindowCountdownRow> rows)
+        private void OnProgramListTick(IReadOnlyList<ProgramListRow> rows)
         {
             void Apply() => _mainWindow?.ApplyProgramCountdowns(rows);
             if (Dispatcher.CheckAccess())
@@ -459,7 +434,6 @@ namespace AutoSaver
             Log($"Program added: {prog.Name} ({prog.Exe})");
             _programs.Add(prog);
             _scheduler.AddProgram(prog);
-            _monitor.RefreshPrograms(_programs);
             ConfigService.SavePrograms(_programs);
         }
 
@@ -477,7 +451,6 @@ namespace AutoSaver
             Log($"Program deleted: {programId}");
             _programs.RemoveAll(p => p.Id == programId);
             _scheduler.RemoveProgram(programId);
-            _monitor.RefreshPrograms(_programs);
             ConfigService.SavePrograms(_programs);
         }
 
@@ -485,7 +458,6 @@ namespace AutoSaver
         {
             Log("AutoSaver exiting");
             _scheduler.StopAll();
-            _monitor.Stop();
             _tray.Visible = false;
             _tray.Dispose();
 
@@ -499,7 +471,6 @@ namespace AutoSaver
         protected override void OnExit(ExitEventArgs e)
         {
             _scheduler?.StopAll();
-            _monitor?.Stop();
             _tray?.Dispose();
             try { if (_iconTempPath != null) File.Delete(_iconTempPath); }
             catch { }

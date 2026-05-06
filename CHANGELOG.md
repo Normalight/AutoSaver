@@ -5,6 +5,15 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-05-06
+
+### Changed
+- Scheduling is **foreground-only**: configured programs act as a whitelist; the countdown runs only while that executable owns the foreground window; **switching focus resets** the timer to the full interval.
+- Removed **ProcessMonitor** (no periodic scan of all processes). Tray menu lists configured programs by **name only** (no run-state dots).
+
+### Removed
+- Per-window HWND enumeration in the scheduler, **expandable multi-window** groups in the main list, and related UI.
+
 ## [1.5.1] - 2026-05-06
 
 ### Fixed
