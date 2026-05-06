@@ -1,9 +1,9 @@
 <Window x:Class="AutoSaver.Views.ProcessPickerDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="选择正在运行的程序" Height="380" Width="320"
+        Title="选择正在运行的程序" Height="420" Width="360"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        WindowStyle="None">
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent">
 
     <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource DividerColor}" BorderThickness="1" CornerRadius="12">
         <Grid Margin="20">
@@ -16,15 +16,24 @@
             <TextBlock Text="选择正在运行的程序" Style="{StaticResource H2}" Margin="0,0,0,14"/>
 
             <TextBox x:Name="SearchBox" Grid.Row="1" Height="34" Margin="0,0,0,10"
-                     TextChanged="OnSearchTextChanged">
-                <TextBox.Tag>搜索进程名...</TextBox.Tag>
-            </TextBox>
+                     TextChanged="OnSearchTextChanged"/>
 
             <Border Grid.Row="2" Background="{DynamicResource BgTertiary}"
                     CornerRadius="8" Padding="4">
                 <ListBox x:Name="ProcessList"
                          MouseDoubleClick="OnItemDoubleClick"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="4,4">
+                                <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextPrimary}" FontSize="13"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </Border>
         </Grid>
     </Border>

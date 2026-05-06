@@ -52,11 +52,18 @@
                         <StackPanel>
                             <TextBlock Text="主题" Style="{StaticResource H2}"/>
                             <TextBlock Text="切换界面明暗主题，所有控件会同步更新。" Style="{StaticResource Caption}" Margin="0,6,0,16"/>
-                            <ComboBox x:Name="ThemeCombo" Height="38">
-                                <ComboBoxItem Content="深色"/>
-                                <ComboBoxItem Content="浅色"/>
-                                <ComboBoxItem Content="跟随系统"/>
-                            </ComboBox>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ThemeDarkBtn"  Grid.Column="0" Content="深色"   Height="36" Click="OnThemeDarkClick"/>
+                                <Button x:Name="ThemeLightBtn" Grid.Column="2" Content="浅色"   Height="36" Click="OnThemeLightClick"/>
+                                <Button x:Name="ThemeSystemBtn"Grid.Column="4" Content="跟随系统" Height="36" Click="OnThemeSystemClick"/>
+                            </Grid>
                         </StackPanel>
                     </Border>
 

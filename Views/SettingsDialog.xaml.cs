@@ -7,12 +7,14 @@ namespace AutoSaver.Views
 {
     public partial class SettingsDialog : Window
     {
+        private AppTheme _selectedTheme;
+
         public SettingsDialog()
         {
             InitializeComponent();
 
-            var theme = ThemeService.CurrentTheme;
-            ThemeCombo.SelectedIndex = (int)theme;
+            _selectedTheme = ThemeService.CurrentTheme;
+            UpdateThemeButtons();
 
             var intervalSec = ConfigService.CheckIntervalSec;
             if (intervalSec % 3600 == 0)
@@ -33,6 +35,39 @@ namespace AutoSaver.Views
             StartupCheck.IsChecked = ConfigService.StartWithWindows;
             TrayCloseCheck.IsChecked = ConfigService.MinimizeToTrayOnClose;
             NotifyCheck.IsChecked = ConfigService.ShowNotifications;
+        }
+
+        private void UpdateThemeButtons()
+        {
+            var accent = TryFindResource("AccentColor") as System.Windows.Media.Brush;
+            var normal = TryFindResource("ControlBackground") as System.Windows.Media.Brush;
+            var accentFg = System.Windows.Media.Brushes.White;
+            var normalFg = TryFindResource("TextPrimary") as System.Windows.Media.Brush;
+
+            ThemeDarkBtn.Background   = _selectedTheme == AppTheme.Dark   ? accent : normal;
+            ThemeDarkBtn.Foreground   = _selectedTheme == AppTheme.Dark   ? accentFg : normalFg;
+            ThemeLightBtn.Background  = _selectedTheme == AppTheme.Light  ? accent : normal;
+            ThemeLightBtn.Foreground  = _selectedTheme == AppTheme.Light  ? accentFg : normalFg;
+            ThemeSystemBtn.Background = _selectedTheme == AppTheme.System ? accent : normal;
+            ThemeSystemBtn.Foreground = _selectedTheme == AppTheme.System ? accentFg : normalFg;
+        }
+
+        private void OnThemeDarkClick(object sender, RoutedEventArgs e)
+        {
+            _selectedTheme = AppTheme.Dark;
+            UpdateThemeButtons();
+        }
+
+        private void OnThemeLightClick(object sender, RoutedEventArgs e)
+        {
+            _selectedTheme = AppTheme.Light;
+            UpdateThemeButtons();
+        }
+
+        private void OnThemeSystemClick(object sender, RoutedEventArgs e)
+        {
+            _selectedTheme = AppTheme.System;
+            UpdateThemeButtons();
         }
 
         private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -63,7 +98,7 @@ namespace AutoSaver.Views
                 return;
             }
 
-            ThemeService.CurrentTheme = (AppTheme)ThemeCombo.SelectedIndex;
+            ThemeService.CurrentTheme = _selectedTheme;
             ConfigService.CheckIntervalSec = intervalSec;
             ConfigService.StartWithWindows = StartupCheck.IsChecked == true;
             ConfigService.MinimizeToTrayOnClose = TrayCloseCheck.IsChecked == true;
@@ -78,9 +113,7 @@ namespace AutoSaver.Views
         private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton != MouseButton.Left) return;
-            if (e.ClickCount == 2)
-                return;
-
+            if (e.ClickCount == 2) return;
             DragMove();
         }
 
