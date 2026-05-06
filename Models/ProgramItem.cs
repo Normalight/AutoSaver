@@ -26,5 +26,14 @@ namespace AutoSaver.Models
 
         public static bool ExeKeysEqual(string a, string b) =>
             NormalizeExeKey(a) == NormalizeExeKey(b);
+
+        /// <summary>界面主标题用短名：仅 exe 文件名去掉后缀（如 sai2），不含产品全称。</summary>
+        public static string GetExeStemDisplay(string exe)
+        {
+            if (string.IsNullOrWhiteSpace(exe)) return "";
+            var f = Path.GetFileName(exe.Trim());
+            if (string.IsNullOrEmpty(f)) return "";
+            return Path.GetFileNameWithoutExtension(f);
+        }
     }
 }

@@ -5,7 +5,8 @@ namespace AutoSaver.Models
 {
     public class WindowSubRow
     {
-        public string WindowTitle { get; set; }
+        /// <summary>子卡片主文案：产品全称 · 窗口标题（无元数据时仅有窗口标题）。</summary>
+        public string Headline { get; set; }
         public string TimerStatus { get; set; }
     }
 

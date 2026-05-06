@@ -377,10 +377,13 @@ namespace AutoSaver.Services
                 return new FocusCountdownSnapshot(false, "", 0, 0);
 
             var iv = EffectiveInterval(st.Program);
+            var stem = ProgramItem.GetExeStemDisplay(st.Program.Exe);
+            if (string.IsNullOrWhiteSpace(stem))
+                stem = st.Program.Name;
             var title = WindowService.GetWindowTitle(fgHwnd);
             var label = string.IsNullOrWhiteSpace(title)
-                ? st.Program.Name
-                : $"{st.Program.Name} · {title}";
+                ? stem
+                : $"{stem} · {title}";
             return new FocusCountdownSnapshot(true, label, slot.RemainingSec, iv);
         }
 

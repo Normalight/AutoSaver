@@ -223,7 +223,7 @@
                                                                     <RowDefinition Height="Auto"/>
                                                                     <RowDefinition Height="Auto"/>
                                                                 </Grid.RowDefinitions>
-                                                                <TextBlock Grid.Row="0" Text="{Binding WindowTitle}" FontSize="12" FontWeight="SemiBold"
+                                                                <TextBlock Grid.Row="0" Text="{Binding Headline}" FontSize="12" FontWeight="SemiBold"
                                                                            Foreground="{DynamicResource TextPrimary}"
                                                                            TextTrimming="CharacterEllipsis"/>
                                                                 <TextBlock Grid.Row="1" Text="{Binding TimerStatus}" Style="{StaticResource Caption}"

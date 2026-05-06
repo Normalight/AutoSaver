@@ -85,7 +85,9 @@ namespace AutoSaver.Views
                     ? (TryFindResource("SuccessColor") as Brush ?? FallbackSuccessBrush)
                     : (TryFindResource("TextMuted") as Brush ?? FallbackMutedBrush);
                 var icon = GetIconFromPath(exePath);
-                var displayName = CreateDisplayName(p.Name, p.Exe, exePath);
+                var displayName = ProgramItem.GetExeStemDisplay(p.Exe);
+                if (string.IsNullOrWhiteSpace(displayName))
+                    displayName = p.Name;
                 var exeFileSummary = CreateExeSummary(p.Exe);
 
                 bool expanded = _programGroupExpanded.TryGetValue(p.Id, out var expVal) ? expVal : true;
@@ -132,14 +134,14 @@ namespace AutoSaver.Views
                 if (wins.Count == 1)
                 {
                     var w = wins[0];
-                    var title = string.IsNullOrWhiteSpace(w.WindowTitle) ? "（无标题）" : w.WindowTitle;
-                    displayItems.Add(Row(false, null, FormatWindowTimerStatus(w), title));
+                    var subtitle = BuildSubWindowHeadline(exePath, w.WindowTitle);
+                    displayItems.Add(Row(false, null, FormatWindowTimerStatus(w), subtitle));
                     continue;
                 }
 
                 var subRows = wins.Select(w => new WindowSubRow
                 {
-                    WindowTitle = string.IsNullOrWhiteSpace(w.WindowTitle) ? "（无标题）" : w.WindowTitle,
+                    Headline = BuildSubWindowHeadline(exePath, w.WindowTitle),
                     TimerStatus = FormatWindowTimerStatus(w)
                 }).ToList();
 
@@ -219,12 +221,14 @@ namespace AutoSaver.Views
             return string.IsNullOrEmpty(fileName) ? exe : fileName;
         }
 
-        private static string CreateDisplayName(string storedName, string exe, string exePath)
+        /// <summary>子窗口区展示：产品全称（若有）· 窗口标题。</summary>
+        private static string BuildSubWindowHeadline(string exePath, string hwndWindowTitle)
         {
-            var friendlyName = ExecutableMetadataService.GetFriendlyName(exePath);
-            if (!string.IsNullOrWhiteSpace(friendlyName)) return friendlyName;
-            if (!string.IsNullOrWhiteSpace(storedName)) return storedName;
-            return Path.GetFileNameWithoutExtension(exe);
+            var friendly = ExecutableMetadataService.GetFriendlyName(exePath);
+            var wt = string.IsNullOrWhiteSpace(hwndWindowTitle) ? "（无标题）" : hwndWindowTitle;
+            if (!string.IsNullOrWhiteSpace(friendly))
+                return $"{friendly} · {wt}";
+            return wt;
         }
 
         private static ImageSource GetIconFromPath(string path)
@@ -235,11 +239,6 @@ namespace AutoSaver.Views
         private static string GetExePath(string exeName)
         {
             return ExecutableMetadataService.GetExePath(exeName);
-        }
-
-        private static string GetFriendlyName(string exePath)
-        {
-            return ExecutableMetadataService.GetFriendlyName(exePath);
         }
 
         private void OnAddClick(object sender, RoutedEventArgs e)
@@ -273,9 +272,8 @@ namespace AutoSaver.Views
             if (dlg.ShowDialog() != true) return;
 
             var exe = Path.GetFileName(dlg.FileName);
-            var name = GetFriendlyName(dlg.FileName)
-                       ?? Path.GetFileNameWithoutExtension(dlg.FileName);
-            AddProgram(name, exe);
+            var stem = ProgramItem.GetExeStemDisplay(exe);
+            AddProgram(string.IsNullOrEmpty(stem) ? Path.GetFileNameWithoutExtension(exe) : stem, exe);
         }
 
         private void AddByPicker()
@@ -284,10 +282,8 @@ namespace AutoSaver.Views
             if (picker.ShowDialog() != true || string.IsNullOrEmpty(picker.SelectedProcessName)) return;
 
             var exe = picker.SelectedProcessName;
-            var name = !string.IsNullOrWhiteSpace(picker.SelectedFriendlyName)
-                ? picker.SelectedFriendlyName
-                : Path.GetFileNameWithoutExtension(exe);
-            AddProgram(name, exe);
+            var stem = ProgramItem.GetExeStemDisplay(exe);
+            AddProgram(string.IsNullOrEmpty(stem) ? Path.GetFileNameWithoutExtension(exe) : stem, exe);
         }
 
         private void AddProgram(string name, string exe)
@@ -309,9 +305,10 @@ namespace AutoSaver.Views
                 return;
             }
 
+            var stem = ProgramItem.GetExeStemDisplay(exe);
             var prog = new ProgramItem
             {
-                Name = name,
+                Name = string.IsNullOrEmpty(stem) ? name : stem,
                 Exe = exe,
                 Enabled = true,
                 SaveIntervalSec = ConfigService.CheckIntervalSec

@@ -40,8 +40,11 @@ namespace AutoSaver.Views
             if (dlg.ShowDialog() == true)
             {
                 ExeBox.Text = System.IO.Path.GetFileName(dlg.FileName);
-                NameBox.Text = ExecutableMetadataService.GetFriendlyName(dlg.FileName)
-                               ?? System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+                var exeLocal = ExeBox.Text;
+                var stem = ProgramItem.GetExeStemDisplay(exeLocal);
+                NameBox.Text = string.IsNullOrEmpty(stem)
+                    ? System.IO.Path.GetFileNameWithoutExtension(dlg.FileName)
+                    : stem;
             }
         }
 
@@ -52,9 +55,10 @@ namespace AutoSaver.Views
             if (picker.ShowDialog() == true && !string.IsNullOrEmpty(picker.SelectedProcessName))
             {
                 ExeBox.Text = picker.SelectedProcessName;
-                NameBox.Text = !string.IsNullOrWhiteSpace(picker.SelectedFriendlyName)
-                    ? picker.SelectedFriendlyName
-                    : System.IO.Path.GetFileNameWithoutExtension(picker.SelectedProcessName);
+                var stem = ProgramItem.GetExeStemDisplay(picker.SelectedProcessName);
+                NameBox.Text = string.IsNullOrEmpty(stem)
+                    ? System.IO.Path.GetFileNameWithoutExtension(picker.SelectedProcessName)
+                    : stem;
             }
         }
 
@@ -75,7 +79,12 @@ namespace AutoSaver.Views
             }
 
             Result = _existing ?? new ProgramItem();
-            Result.Name = name.Length > 0 ? name : System.IO.Path.GetFileNameWithoutExtension(exe);
+            var stemDefault = ProgramItem.GetExeStemDisplay(exe);
+            Result.Name = name.Length > 0
+                ? name
+                : (!string.IsNullOrEmpty(stemDefault)
+                    ? stemDefault
+                    : System.IO.Path.GetFileNameWithoutExtension(exe));
             Result.Exe = exe;
             Result.SaveIntervalSec = ConfigService.CheckIntervalSec;
             Result.Enabled = EnabledCheck.IsChecked == true;
