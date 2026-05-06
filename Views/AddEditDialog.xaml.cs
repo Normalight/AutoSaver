@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using AutoSaver.Models;
+using AutoSaver.Services;
 using Microsoft.Win32;
 
 namespace AutoSaver.Views
@@ -21,7 +22,6 @@ namespace AutoSaver.Views
                 Title = "编辑程序";
                 NameBox.Text = program.Name;
                 ExeBox.Text = program.Exe;
-                IntervalBox.Text = (program.SaveIntervalSec / 60).ToString();
                 EnabledCheck.IsChecked = program.Enabled;
             }
         }
@@ -39,8 +39,7 @@ namespace AutoSaver.Views
 
             if (dlg.ShowDialog() == true)
             {
-                var exeName = System.IO.Path.GetFileName(dlg.FileName);
-                ExeBox.Text = exeName;
+                ExeBox.Text = System.IO.Path.GetFileName(dlg.FileName);
                 NameBox.Text = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
             }
         }
@@ -65,16 +64,11 @@ namespace AutoSaver.Views
                 MessageBox.Show("请输入进程名。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (!int.TryParse(IntervalBox.Text, out var minutes) || minutes < 1)
-            {
-                MessageBox.Show("保存间隔必须为大于 0 的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
 
             Result = _existing ?? new ProgramItem();
             Result.Name = name.Length > 0 ? name : System.IO.Path.GetFileNameWithoutExtension(exe);
             Result.Exe = exe;
-            Result.SaveIntervalSec = minutes * 60;
+            Result.SaveIntervalSec = ConfigService.CheckIntervalSec;
             Result.Enabled = EnabledCheck.IsChecked == true;
 
             DialogResult = true;

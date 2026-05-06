@@ -35,9 +35,6 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="–" Style="{StaticResource GhostButton}"
-                                Height="34" Width="40" MinWidth="40" Padding="0"
-                                Click="OnMinimizeClick" ToolTip="最小化" Margin="0,0,10,0"/>
                         <Button Content="✕" Style="{StaticResource GhostButton}"
                                 Height="34" Width="40" MinWidth="40" Padding="0"
                                 Foreground="{DynamicResource DangerColor}"
