@@ -5,6 +5,33 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-05-07
+
+### Added
+- Countdown capsule in the title bar showing time remaining until the next auto-save.
+
+### Changed
+- List item selection highlight changed from solid fill to accent-colored border style.
+- Main window and dialogs now use rounded corners throughout.
+- Version number is now written into `autosaver.ini` under `[meta]` on startup.
+
+### Fixed
+- Countdown capsule hides and timer stops correctly when the countdown reaches zero.
+- Duplicate version entry in the default `autosaver.ini` template corrected.
+
+## [1.3.6] - 2026-05-07
+
+### Added
+- **Countdown capsule** — title bar now shows a pill displaying time until the next auto-save, hiding when idle.
+
+### Changed
+- List item selection style changed from solid fill to accent-colored border highlight.
+- Main window and dialogs now use rounded corners throughout.
+
+### Fixed
+- Version number is now correctly written into `autosaver.ini` `[meta]` on first run (was missing / duplicated).
+- Countdown capsule hides and timer stops when the countdown reaches zero.
+
 ## [1.3.5] - 2026-05-06
 
 ### Fixed
