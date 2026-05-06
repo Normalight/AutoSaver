@@ -169,6 +169,8 @@ namespace AutoSaver
 
             _notification.Show(result.Program.Name, result.Message, type, result.JumpAction);
         }
+
+        private void ShowSettings()
         {
             var dlg = new SettingsDialog();
             dlg.Owner = _mainWindow; // may be null, that's fine
