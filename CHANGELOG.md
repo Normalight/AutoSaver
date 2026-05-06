@@ -5,6 +5,23 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-05-06
+
+### Added
+- Single-instance enforcement via named mutex — launching a second process exits immediately.
+- Assembly version attributes (`AssemblyVersion`, `FileVersion`, `AssemblyInformationalVersion`) in project file.
+
+### Changed
+- Version fallback now uses assembly version when the `VERSION` file is missing or empty.
+- Settings dialog: increased card spacing, wider minimum size, footer anchored in a separated border.
+- Title-bar height and margins slightly increased on settings window for better visual balance.
+
+### Fixed
+- ComboBox dropdown and selected item now use full theme templates in both dark and light mode, ensuring text vertical centering.
+- System title-bar remnants removed on `MainWindow` and `SettingsDialog` via explicit `WindowChrome`.
+- `AddEditDialog`, `ProcessPickerDialog`, and `NotificationOverlay` no longer show default OS chrome — all windows use `WindowStyle="None"` with themed borders.
+- `NotificationOverlay` resource references changed from `StaticResource` to `DynamicResource` for proper theme switching.
+
 ## [1.3.0] - 2026-05-06
 
 ### Added

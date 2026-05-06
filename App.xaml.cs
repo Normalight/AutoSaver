@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Windows;
 using AutoSaver.Models;
 using AutoSaver.Services;
@@ -16,6 +17,8 @@ namespace AutoSaver
 {
     public partial class App : Application
     {
+        private const string SingleInstanceMutexName = "AutoSaver.SingleInstance";
+        private static Mutex _singleInstanceMutex;
         private NotifyIcon _tray;
         private ProcessMonitor _monitor;
         private SaveScheduler _scheduler;
@@ -25,22 +28,36 @@ namespace AutoSaver
         private string _logPath;
         private string _iconTempPath;
 
-        public static string Version { get; private set; } = "1.0.0";
+        public static string Version { get; private set; } = GetAssemblyVersion();
         public static string CurrentReleaseNotes { get; private set; } = "";
 
         private void OnStartup(object sender, StartupEventArgs e)
         {
+            var createdNew = false;
+            _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out createdNew);
+            if (!createdNew)
+            {
+                Shutdown();
+                return;
+            }
+
             // Read version from VERSION file
             try
             {
                 var versionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VERSION");
                 if (File.Exists(versionPath))
-                    Version = File.ReadAllText(versionPath).Trim();
+                {
+                    var fileVersion = File.ReadAllText(versionPath).Trim();
+                    if (!string.IsNullOrWhiteSpace(fileVersion))
+                        Version = fileVersion;
+                }
             }
             catch { }
 
-            var changelogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md");
-            CurrentReleaseNotes = ChangelogService.GetReleaseNotes(changelogPath, Version);
+            if (string.IsNullOrWhiteSpace(Version))
+                Version = GetAssemblyVersion();
+
+            CurrentReleaseNotes = ChangelogService.GetReleaseNotes(changelogPath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md"), version: Version);
 
             // Theme must be first - applies to all windows
             ThemeService.InitTheme(this);
@@ -68,6 +85,12 @@ namespace AutoSaver
             _monitor.Start(ConfigService.CheckIntervalSec);
 
             SetupTray();
+        }
+
+        private static string GetAssemblyVersion()
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            return version == null ? "1.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
         }
 
         private void ExtractIcon()
@@ -263,6 +286,8 @@ namespace AutoSaver
             _tray?.Dispose();
             try { if (_iconTempPath != null) File.Delete(_iconTempPath); }
             catch { }
+            try { _singleInstanceMutex?.ReleaseMutex(); } catch { }
+            _singleInstanceMutex?.Dispose();
             base.OnExit(e);
         }
 

@@ -6,8 +6,8 @@
         Background="Transparent">
 
     <Border x:Name="RootBorder" CornerRadius="8" Padding="14,0"
-            Background="{StaticResource BgSecondary}"
-            BorderThickness="1" BorderBrush="{StaticResource BorderColor}">
+            Background="{DynamicResource BgSecondary}"
+            BorderThickness="1" BorderBrush="{DynamicResource BorderColor}">
         <Border.Effect>
             <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.3"/>
         </Border.Effect>
@@ -28,7 +28,7 @@
                 <TextBlock x:Name="TitleText" FontSize="13" FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"/>
                 <TextBlock x:Name="DetailText" FontSize="12"
-                           Foreground="{StaticResource TextSecondary}"
+                           Foreground="{DynamicResource TextSecondary}"
                            TextTrimming="CharacterEllipsis" MaxWidth="280"/>
             </StackPanel>
 
