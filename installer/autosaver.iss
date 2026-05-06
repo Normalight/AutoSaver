@@ -60,6 +60,9 @@ Filename: "{sys}\cmd.exe"; Parameters: "/c taskkill /F /IM {#MyAppExeName} /T >n
 
 [Code]
 
+var
+  DeleteUserConfig: Boolean;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
@@ -67,4 +70,39 @@ begin
   // 覆盖安装前强制结束进程，避免 exe 被占用导致更新失败
   Exec(ExpandConstant('{sys}\taskkill.exe'), ExpandConstant('/F /IM {#MyAppExeName} /T'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := '';
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  DeleteUserConfig := False;
+  if WizardSilent() then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  if MsgBox(
+    '是否删除 AutoSaver 的用户配置文件？' + #13#10 + #13#10 +
+    '将移除目录：' + ExpandConstant('{userappdata}\AutoSaver') + #13#10 +
+    '（含 autosaver.ini、监控程序列表等）。' + #13#10 + #13#10 +
+    '若希望以后重装保留设置，请选择「否」。',
+    mbConfirmation,
+    MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    DeleteUserConfig := True;
+
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep <> usPostUninstall then
+    Exit;
+
+  if not DeleteUserConfig then
+    Exit;
+
+  DelTree(ExpandConstant('{userappdata}\{#MyAppName}'), True, True);
+
+  if FileExists(ExpandConstant('{app}\autosaver.ini')) then
+    DeleteFile(ExpandConstant('{app}\autosaver.ini'));
 end;
