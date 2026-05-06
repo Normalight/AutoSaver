@@ -76,22 +76,110 @@ namespace AutoSaver.Services
         {
             var current = App.Version;
             var result = new UpdateCheckResult { CurrentVersion = current };
+            Exception apiException = null;
 
             try
             {
                 var json = FetchJson(ApiUrl);
                 ParseRelease(json, result);
-
-                if (!string.IsNullOrEmpty(result.LatestVersion))
-                    result.HasUpdate = IsNewer(result.LatestVersion, current);
             }
             catch (Exception ex)
             {
-                result.ErrorMessage = FormatUserFacingError(ex);
-                result.HasUpdate = false;
+                apiException = ex;
             }
 
+            // API 失败或解析不到版本时：许多网络环境屏蔽 api.github.com 但不屏蔽 github.com，用 releases/latest 重定向解析版本。
+            if (string.IsNullOrEmpty(result.LatestVersion))
+            {
+                if (!TryPopulateLatestFromGitHubReleasePage(result))
+                {
+                    result.ErrorMessage = apiException != null
+                        ? FormatUserFacingError(apiException)
+                        : "无法从 GitHub 获取最新版本（请检查网络或代理）。";
+                    result.HasUpdate = false;
+                    return result;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(result.LatestVersion))
+                result.HasUpdate = IsNewer(result.LatestVersion, current);
+
+            result.ErrorMessage = "";
             return result;
+        }
+
+        /// <summary>
+        /// GET https://github.com/.../releases/latest ，跟随重定向，从最终 URL 的 /releases/tag/{tag} 解析版本并构造安装包直链。
+        /// </summary>
+        private static bool TryPopulateLatestFromGitHubReleasePage(UpdateCheckResult result)
+        {
+            const string pageUrl = "https://github.com/Normalight/AutoSaver/releases/latest";
+            try
+            {
+                var uri = new Uri(pageUrl, UriKind.Absolute);
+                var req = (HttpWebRequest)WebRequest.Create(uri);
+                req.Method = "GET";
+                req.UserAgent = UserAgent;
+                req.AllowAutoRedirect = true;
+                req.Timeout = 45_000;
+                req.ReadWriteTimeout = 45_000;
+                req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                ConfigureProxy(req, uri);
+
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                {
+                    using (resp.GetResponseStream()) { }
+
+                    return TryFillResultFromReleaseTagUri(resp.ResponseUri, result);
+                }
+            }
+            catch (WebException ex)
+            {
+                return TryPopulateFromRedirectException(ex, result);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryPopulateFromRedirectException(WebException ex, UpdateCheckResult result)
+        {
+            if (ex.Response is HttpWebResponse h)
+            {
+                var code = (int)h.StatusCode;
+                if (code >= 300 && code < 400)
+                {
+                    var loc = h.GetResponseHeader("Location");
+                    if (!string.IsNullOrEmpty(loc) &&
+                        Uri.TryCreate(loc, UriKind.Absolute, out var locUri))
+                        return TryFillResultFromReleaseTagUri(locUri, result);
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryFillResultFromReleaseTagUri(Uri uri, UpdateCheckResult result)
+        {
+            var path = uri.AbsolutePath;
+            const string marker = "/releases/tag/";
+            var idx = path.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0)
+                return false;
+
+            var tag = path.Substring(idx + marker.Length).Trim('/');
+            if (string.IsNullOrEmpty(tag))
+                return false;
+
+            var semVer = tag.TrimStart('v');
+            result.LatestVersion = semVer;
+            result.ReleaseUrl = uri.ToString();
+            var encTag = Uri.EscapeDataString(tag);
+            result.InstallerUrl =
+                "https://github.com/Normalight/AutoSaver/releases/download/" + encTag + "/" +
+                GetExpectedInstallerAssetFileName(semVer);
+            return true;
         }
 
         private static string FormatUserFacingError(Exception ex)

@@ -5,6 +5,14 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.10] - 2026-05-07
+
+### Fixed
+- **检查更新**：当 **`api.github.com` 不可达**（防火墙/地区网络）时，增加备用路径：请求 **`github.com/.../releases/latest`** 并跟随重定向，从 **`/releases/tag/`** 解析版本并生成 **`releases/download/{tag}/AutoSaver-{semver}-Setup.exe`** 直链，避免因 API 被拦截而一直显示「检查更新失败」。
+
+### Changed
+- **保存间隔**：倒计时与自动保存周期 **仅以全局 `check_interval_sec`（设置里的检查间隔）为准**；`SaveScheduler` 不再使用各程序单独的 `save_interval_sec`。启动加载与修改设置时会将 **`program.*.save_interval_sec` 与全局值对齐写入**，便于手工编辑 ini 时保持一致。
+
 ## [1.5.9] - 2026-05-07
 
 ### Added

@@ -121,7 +121,7 @@ namespace AutoSaver.Services
                 {
                     var st = FindProgramUnlocked(_slotProgramId);
                     if (st != null)
-                        _slotRemainingSec = EffectiveInterval(st.Program);
+                        _slotRemainingSec = EffectiveInterval();
                 }
             }
         }
@@ -160,7 +160,7 @@ namespace AutoSaver.Services
                     _programs.Add(new ProgramState { Program = prog });
 
                 if (_slotProgramId == prog.Id)
-                    _slotRemainingSec = EffectiveInterval(prog);
+                    _slotRemainingSec = EffectiveInterval();
             }
 
             WindowService.InvalidatePidSnapshot();
@@ -196,10 +196,10 @@ namespace AutoSaver.Services
             _slotRemainingSec = 0;
         }
 
-        private int EffectiveInterval(ProgramItem prog)
+        /// <summary>保存/倒计时周期仅使用全局设置（<c>check_interval_sec</c>），不再按程序单独间隔。</summary>
+        private int EffectiveInterval()
         {
-            var sec = prog.SaveIntervalSec > 0 ? prog.SaveIntervalSec : _globalIntervalSec;
-            return Math.Max(1, sec);
+            return Math.Max(1, _globalIntervalSec);
         }
 
         private ProgramState FindProgramUnlocked(string programId)
@@ -259,14 +259,14 @@ namespace AutoSaver.Services
                     _slotProgramId = match.Id;
 
                     if (_slotRemainingSec <= 0)
-                        _slotRemainingSec = EffectiveInterval(match);
+                        _slotRemainingSec = EffectiveInterval();
                     else
                         _slotRemainingSec--;
 
                     if (_slotRemainingSec == 0)
                     {
                         AddSave(toSave, match, fgHwnd);
-                        _slotRemainingSec = EffectiveInterval(match);
+                        _slotRemainingSec = EffectiveInterval();
                     }
                 }
 
@@ -307,7 +307,7 @@ namespace AutoSaver.Services
                 _slotHwnd != fgHwnd || _slotProgramId != foregroundMatch.Id)
                 return new FocusCountdownSnapshot(false, "", 0, 0);
 
-            var iv = EffectiveInterval(foregroundMatch);
+            var iv = EffectiveInterval();
             var titleStem = foregroundMatch.GetDisplayTitle();
             var title = WindowService.GetWindowTitle(fgHwnd);
             var label = string.IsNullOrWhiteSpace(title)
@@ -322,7 +322,7 @@ namespace AutoSaver.Services
             foreach (var s in _programs.OrderBy(x => x.Program.Id, StringComparer.Ordinal))
             {
                 var prog = s.Program;
-                var iv = EffectiveInterval(prog);
+                var iv = EffectiveInterval();
                 var isTarget = prog.Enabled && foregroundMatch != null &&
                                string.Equals(prog.Id, foregroundMatch.Id, StringComparison.Ordinal) &&
                                fgHwnd != IntPtr.Zero && _slotHwnd == fgHwnd &&

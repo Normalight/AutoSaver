@@ -305,6 +305,21 @@ namespace AutoSaver.Services
             if (deduped.Count != programs.Count)
                 SavePrograms(deduped);
 
+            // 保存间隔以全局 check_interval_sec 为准，与各 program 节同步，避免单独残留旧值。
+            var globalIv = CheckIntervalSec;
+            var syncDirty = false;
+            foreach (var p in deduped)
+            {
+                if (p.SaveIntervalSec != globalIv)
+                {
+                    p.SaveIntervalSec = globalIv;
+                    syncDirty = true;
+                }
+            }
+
+            if (syncDirty)
+                SavePrograms(deduped);
+
             return deduped;
         }
 

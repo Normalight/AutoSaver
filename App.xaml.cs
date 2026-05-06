@@ -280,7 +280,11 @@ namespace AutoSaver
 
         private void ApplySavedSettings()
         {
-            _scheduler.SetInterval(ConfigService.CheckIntervalSec);
+            var sec = ConfigService.CheckIntervalSec;
+            _scheduler.SetInterval(sec);
+            foreach (var p in _programs)
+                p.SaveIntervalSec = sec;
+            ConfigService.SavePrograms(_programs);
             Log("Settings updated");
         }
 
