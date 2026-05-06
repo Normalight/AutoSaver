@@ -47,6 +47,19 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Countdown capsule -->
+                        <Border x:Name="CountdownCapsule" Style="{StaticResource CountdownCapsule}"
+                                Margin="0,0,6,0" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
+                                      Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.5"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center"
+                                      Margin="0,0,4,0"/>
+                                <TextBlock x:Name="CountdownLabel" Style="{StaticResource Caption}"
+                                           FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
                         <!-- Minimize -->
                         <Button Style="{StaticResource GhostButton}" Height="30" Width="30" MinWidth="30" Padding="0"
                                 Click="OnMinimizeClick" ToolTip="最小化">
