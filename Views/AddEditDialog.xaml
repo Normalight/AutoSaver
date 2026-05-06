@@ -1,0 +1,46 @@
+<Window x:Class="AutoSaver.Views.AddEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Title="添加程序" Height="280" Width="400"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <StackPanel Margin="12">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+            <Button x:Name="BrowseButton" Content="&#x1F4C1; 选择本地程序"
+                    Width="150" Height="36" Margin="0,0,8,0" Click="OnBrowseClick"/>
+            <Button x:Name="PickRunningButton" Content="&#x1F4CB; 正在运行中选取"
+                    Width="150" Height="36" Click="OnPickRunningClick"/>
+        </StackPanel>
+
+        <Grid Margin="0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="70"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="32"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="显示名称:" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
+            <TextBox x:Name="NameBox" Grid.Row="0" Grid.Column="1" Margin="4,2" Height="24"/>
+
+            <TextBlock Text="进程名:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+            <TextBox x:Name="ExeBox" Grid.Row="1" Grid.Column="1" Margin="4,2" Height="24"/>
+
+            <TextBlock Text="保存间隔:" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0"/>
+            <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1" Margin="4,2">
+                <TextBox x:Name="IntervalBox" Width="60" Height="24" Text="5"/>
+                <TextBlock Text=" 分钟" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <CheckBox x:Name="EnabledCheck" Content="启用" Grid.Row="3" Grid.Column="1"
+                      IsChecked="True" Margin="4,2"/>
+        </Grid>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="取消" Width="70" Height="28" IsCancel="True" Margin="0,0,8,0"/>
+            <Button Content="确定" Width="70" Height="28" IsDefault="True" Click="OnOkClick"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
