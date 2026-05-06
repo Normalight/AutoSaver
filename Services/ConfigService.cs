@@ -62,6 +62,12 @@ namespace AutoSaver.Services
             set => Write("global", "show_notifications", value ? "true" : "false");
         }
 
+        public static bool CheckUpdatesOnStartup
+        {
+            get => Read("global", "check_updates_on_startup", "true") != "false";
+            set => Write("global", "check_updates_on_startup", value ? "true" : "false");
+        }
+
         public static string AppVersion
         {
             get => Read("meta", "version", "");
@@ -70,7 +76,13 @@ namespace AutoSaver.Services
 
         public static void EnsureDefaults()
         {
-            if (File.Exists(IniPath)) return;
+            if (File.Exists(IniPath))
+            {
+                // Backfill keys added in newer versions that may be absent in existing configs.
+                var raw = Read("global", "check_updates_on_startup", "");
+                if (raw == "") Write("global", "check_updates_on_startup", "true");
+                return;
+            }
 
             try
             {
@@ -96,6 +108,7 @@ namespace AutoSaver.Services
             Write("global", "start_with_windows",       "false");
             Write("global", "minimize_to_tray_on_close","true");
             Write("global", "show_notifications",       "true");
+            Write("global", "check_updates_on_startup", "true");
         }
 
         public static List<ProgramItem> LoadPrograms()

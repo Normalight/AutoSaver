@@ -129,6 +129,20 @@
                                     </StackPanel>
                                     <CheckBox x:Name="NotifyCheck" Grid.Column="1" VerticalAlignment="Center"/>
                                 </Grid>
+
+                                <Separator/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="启动时自动检查更新" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="启动时联网检查是否有新版本。" Style="{StaticResource Caption}" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="CheckUpdatesCheck" Grid.Column="1" VerticalAlignment="Center"/>
+                                </Grid>
                             </StackPanel>
                         </StackPanel>
                     </Border>

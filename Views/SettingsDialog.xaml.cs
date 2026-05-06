@@ -35,6 +35,7 @@ namespace AutoSaver.Views
             StartupCheck.IsChecked = ConfigService.StartWithWindows;
             TrayCloseCheck.IsChecked = ConfigService.MinimizeToTrayOnClose;
             NotifyCheck.IsChecked = ConfigService.ShowNotifications;
+            CheckUpdatesCheck.IsChecked = ConfigService.CheckUpdatesOnStartup;
         }
 
         private void UpdateThemeButtons()
@@ -103,6 +104,7 @@ namespace AutoSaver.Views
             ConfigService.StartWithWindows = StartupCheck.IsChecked == true;
             ConfigService.MinimizeToTrayOnClose = TrayCloseCheck.IsChecked == true;
             ConfigService.ShowNotifications = NotifyCheck.IsChecked == true;
+            ConfigService.CheckUpdatesOnStartup = CheckUpdatesCheck.IsChecked == true;
 
             ThemeService.ApplyTheme(Application.Current);
 
