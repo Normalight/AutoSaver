@@ -97,7 +97,10 @@ namespace AutoSaver
 
             // Use extracted icon, fallback to system default
             if (!string.IsNullOrEmpty(_iconTempPath) && File.Exists(_iconTempPath))
-                _tray.Icon = Icon.FromHandle(new Bitmap(_iconTempPath).GetHicon());
+            {
+                using (var bmp = new Bitmap(_iconTempPath))
+                    _tray.Icon = Icon.FromHandle(bmp.GetHicon());
+            }
             else
                 _tray.Icon = SystemIcons.Application;
 
