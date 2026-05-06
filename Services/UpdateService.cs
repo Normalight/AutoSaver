@@ -13,6 +13,12 @@ namespace AutoSaver.Services
     /// All public methods are fire-and-forget safe: network errors are caught and
     /// returned as UpdateCheckResult.ErrorMessage rather than thrown to callers.
     /// </summary>
+    /// <remarks>
+    /// Proxy resolution order: <c>NO_PROXY</c> host match → direct;
+    /// then <c>HTTPS_PROXY</c>/<c>HTTP_PROXY</c>/<c>ALL_PROXY</c> (typical for Clash when not using Windows system proxy);
+    /// then <see cref="WebRequest.GetSystemWebProxy"/> (Clash「系统代理」、企业 PAC)。
+    /// 仅支持 HTTP/HTTPS 代理；纯 SOCKS 端口请使用 Clash 的 mixed / HTTP 入站。
+    /// </remarks>
     public static class UpdateService
     {
         private const string ApiUrl =
@@ -38,6 +44,24 @@ namespace AutoSaver.Services
         // GitHub API requires a User-Agent header.
         private static string UserAgent =>
             $"AutoSaver/{App.Version} (update-check)";
+
+        static UpdateService()
+        {
+            try
+            {
+                // GitHub 要求 TLS 1.2+；部分环境默认仍启用 SSL3 / TLS1.0 会导致握手失败。
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                try
+                {
+                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls13;
+                }
+                catch
+                {
+                    // 旧系统可能无 Tls13 枚举：忽略
+                }
+            }
+            catch { }
+        }
 
         // ------------------------------------------------------------------ //
         //  Public API                                                          //
@@ -70,11 +94,26 @@ namespace AutoSaver.Services
             }
             catch (Exception ex)
             {
-                result.ErrorMessage = ex.Message;
+                result.ErrorMessage = FormatUserFacingError(ex);
                 result.HasUpdate = false;
             }
 
             return result;
+        }
+
+        private static string FormatUserFacingError(Exception ex)
+        {
+            var core = ex.Message;
+            if (ex.InnerException != null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
+                core = ex.InnerException.Message;
+            if (core.IndexOf("TLS", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                core.IndexOf("SSL", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                core.IndexOf("handshake", StringComparison.OrdinalIgnoreCase) >= 0)
+                return core + "（可检查系统 TLS 或代理是否截断 HTTPS）";
+            if (core.IndexOf("407", StringComparison.Ordinal) >= 0 ||
+                core.IndexOf("proxy", StringComparison.OrdinalIgnoreCase) >= 0)
+                return core + "（若使用代理，请确认已登录或设置 HTTPS_PROXY）";
+            return core;
         }
 
         /// <summary>
@@ -100,26 +139,41 @@ namespace AutoSaver.Services
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
 
-            var req = (HttpWebRequest)WebRequest.Create(url);
+            var uri = new Uri(url, UriKind.Absolute);
+            var req = (HttpWebRequest)WebRequest.Create(uri);
             req.Method = "GET";
             req.UserAgent = UserAgent;
-            req.Timeout = 30_000;
+            req.Timeout = 600_000;
+            req.ReadWriteTimeout = 600_000;
             req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+            ConfigureProxy(req, uri);
 
-            using (var resp = (HttpWebResponse)req.GetResponse())
-            using (var stream = resp.GetResponseStream())
-            using (var file = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            try
             {
-                var totalBytes = resp.ContentLength > 0 ? resp.ContentLength : -1;
-                var buffer = new byte[81920];
-                long downloadedBytes = 0;
-                int read;
-                while (stream != null && (read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                using (var resp = (HttpWebResponse)req.GetResponse())
                 {
-                    file.Write(buffer, 0, read);
-                    downloadedBytes += read;
-                    onProgress?.Invoke(downloadedBytes, totalBytes);
+                    if (resp.StatusCode != HttpStatusCode.OK)
+                        throw new InvalidOperationException($"下载返回 HTTP {(int)resp.StatusCode} {resp.StatusDescription}");
+
+                    using (var stream = resp.GetResponseStream())
+                    using (var file = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        var totalBytes = resp.ContentLength > 0 ? resp.ContentLength : -1;
+                        var buffer = new byte[81920];
+                        long downloadedBytes = 0;
+                        int read;
+                        while (stream != null && (read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            file.Write(buffer, 0, read);
+                            downloadedBytes += read;
+                            onProgress?.Invoke(downloadedBytes, totalBytes);
+                        }
+                    }
                 }
+            }
+            catch (WebException ex)
+            {
+                throw new InvalidOperationException(BuildWebExceptionMessage(ex), ex);
             }
 
             return destinationPath;
@@ -144,18 +198,193 @@ namespace AutoSaver.Services
 
         private static string FetchJson(string url)
         {
-            var req = (HttpWebRequest)WebRequest.Create(url);
+            var uri = new Uri(url, UriKind.Absolute);
+            var req = (HttpWebRequest)WebRequest.Create(uri);
             req.Method = "GET";
             req.UserAgent = UserAgent;
             req.Accept = "application/vnd.github+json";
             req.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
-            req.Timeout = 15_000;
+            req.Timeout = 45_000;
+            req.ReadWriteTimeout = 45_000;
             req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+            ConfigureProxy(req, uri);
 
-            using (var resp = (HttpWebResponse)req.GetResponse())
-            using (var stream = resp.GetResponseStream())
-            using (var reader = new StreamReader(stream, Encoding.UTF8))
-                return reader.ReadToEnd();
+            try
+            {
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                {
+                    if (resp.StatusCode != HttpStatusCode.OK)
+                    {
+                        var errBody = "";
+                        using (var es = resp.GetResponseStream())
+                        {
+                            if (es != null)
+                            {
+                                using (var sr = new StreamReader(es, Encoding.UTF8))
+                                    errBody = sr.ReadToEnd();
+                            }
+                        }
+
+                        throw new InvalidOperationException(
+                            $"GitHub API HTTP {(int)resp.StatusCode}: {errBody}");
+                    }
+
+                    using (var stream = resp.GetResponseStream())
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                        return reader.ReadToEnd();
+                }
+            }
+            catch (WebException ex)
+            {
+                throw new InvalidOperationException(BuildWebExceptionMessage(ex), ex);
+            }
+        }
+
+        /// <summary>
+        /// 环境变量代理优先（Clash 未开系统代理时常用），否则使用 Windows 系统代理（IE / WinHTTP）。
+        /// </summary>
+        private static void ConfigureProxy(HttpWebRequest req, Uri targetUri)
+        {
+            req.UseDefaultCredentials = true;
+
+            if (ShouldBypassProxyForHost(targetUri))
+            {
+                req.Proxy = null;
+                return;
+            }
+
+            var envProxy = TryCreateProxyFromEnvironment();
+            if (envProxy != null)
+            {
+                req.Proxy = envProxy;
+                return;
+            }
+
+            try
+            {
+                var sys = WebRequest.GetSystemWebProxy();
+                if (sys != null && !sys.IsBypassed(targetUri))
+                {
+                    req.Proxy = sys;
+                    return;
+                }
+            }
+            catch { }
+
+            try
+            {
+                var def = WebRequest.DefaultWebProxy;
+                if (def != null && !def.IsBypassed(targetUri))
+                    req.Proxy = def;
+                else
+                    req.Proxy = null;
+            }
+            catch
+            {
+                req.Proxy = null;
+            }
+        }
+
+        private static bool ShouldBypassProxyForHost(Uri targetUri)
+        {
+            var raw = Environment.GetEnvironmentVariable("NO_PROXY")
+                      ?? Environment.GetEnvironmentVariable("no_proxy");
+            if (string.IsNullOrWhiteSpace(raw)) return false;
+
+            var host = targetUri.Host;
+            foreach (var part in raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var p = part.Trim();
+                if (p.Length == 0) continue;
+                if (p == "*") return true;
+                if (string.Equals(host, p, StringComparison.OrdinalIgnoreCase)) return true;
+                if (p.StartsWith(".", StringComparison.Ordinal) &&
+                    host.EndsWith(p, StringComparison.OrdinalIgnoreCase)) return true;
+                if (p.StartsWith("*.", StringComparison.Ordinal) &&
+                    host.EndsWith(p.Substring(1), StringComparison.OrdinalIgnoreCase)) return true;
+            }
+
+            return false;
+        }
+
+        private static WebProxy TryCreateProxyFromEnvironment()
+        {
+            var raw = FirstNonEmpty(
+                Environment.GetEnvironmentVariable("HTTPS_PROXY"),
+                Environment.GetEnvironmentVariable("https_proxy"),
+                Environment.GetEnvironmentVariable("HTTP_PROXY"),
+                Environment.GetEnvironmentVariable("http_proxy"),
+                Environment.GetEnvironmentVariable("ALL_PROXY"),
+                Environment.GetEnvironmentVariable("all_proxy"));
+
+            raw = TrimEnvQuotes(raw);
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+
+            if (!raw.Contains("://", StringComparison.Ordinal))
+                raw = "http://" + raw.Trim();
+
+            try
+            {
+                var uri = new Uri(raw, UriKind.Absolute);
+                return new WebProxy(uri);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            if (values == null) return null;
+            foreach (var v in values)
+            {
+                var t = TrimEnvQuotes(v);
+                if (!string.IsNullOrWhiteSpace(t)) return t;
+            }
+
+            return null;
+        }
+
+        private static string TrimEnvQuotes(string v)
+        {
+            if (string.IsNullOrWhiteSpace(v)) return "";
+            v = v.Trim();
+            if (v.Length >= 2 &&
+                ((v[0] == '"' && v[v.Length - 1] == '"') || (v[0] == '\'' && v[v.Length - 1] == '\'')))
+                v = v.Substring(1, v.Length - 2).Trim();
+            return v;
+        }
+
+        private static string BuildWebExceptionMessage(WebException ex)
+        {
+            if (ex.Status == WebExceptionStatus.Timeout)
+                return "连接超时（请检查网络、代理或防火墙）。";
+
+            if (ex.Response is HttpWebResponse h)
+            {
+                try
+                {
+                    using (var ts = h.GetResponseStream())
+                    {
+                        if (ts == null)
+                            return $"HTTP {(int)h.StatusCode} {h.StatusDescription}";
+                        using (var sr = new StreamReader(ts, Encoding.UTF8))
+                        {
+                            var body = sr.ReadToEnd();
+                            if (body.Length > 600)
+                                body = body.Substring(0, 600) + "...";
+                            return $"HTTP {(int)h.StatusCode} {h.StatusDescription}: {body}";
+                        }
+                    }
+                }
+                catch
+                {
+                    return $"HTTP {(int)h.StatusCode} {h.StatusDescription}";
+                }
+            }
+
+            return ex.Message;
         }
 
         /// <summary>

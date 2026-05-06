@@ -48,7 +48,7 @@ namespace AutoSaver.Views
                     TitleText.Text = $"⚠ {programName}";
                     TitleText.Foreground = ThemeBrush("WarningColor", 0xFB, 0xBF, 0x24);
                     DetailText.Text = detail;
-                    JumpButton.Visibility = Visibility.Visible;
+                    JumpButton.Visibility = onJump != null ? Visibility.Visible : Visibility.Collapsed;
                     CloseButton.Visibility = Visibility.Visible;
                     break;
 
@@ -106,9 +106,6 @@ namespace AutoSaver.Views
         private void OnJumpClick(object sender, RoutedEventArgs e)
         {
             _autoHideTimer.Stop();
-            // Hide first so AutoSaver starts releasing the foreground, then invoke the
-            // jump action. This gives SetForegroundWindow a better chance to succeed
-            // because the target process can take the foreground while we're animating out.
             var jump = _onJump;
             HideAnimated();
             jump?.Invoke();

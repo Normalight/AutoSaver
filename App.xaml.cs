@@ -203,6 +203,7 @@ namespace AutoSaver
             {
                 _mainWindow.Activate();
                 _mainWindow.WindowState = WindowState.Normal;
+                _scheduler.SetTrayPaused(false);
                 return;
             }
 
@@ -214,11 +215,13 @@ namespace AutoSaver
 
             _mainWindow.Closed += (s, e) =>
             {
+                _scheduler.SetTrayPaused(true);
                 _mainWindow.SettingsSaved -= OnMainWindowSettingsSaved;
                 _mainWindow = null;
             };
 
             _mainWindow.Show();
+            _scheduler.SetTrayPaused(false);
         }
 
         private void ShowNotification(SaveResult result)

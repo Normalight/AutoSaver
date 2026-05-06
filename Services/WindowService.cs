@@ -4,9 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using System.Windows;
-using System.Windows.Forms;
 
 namespace AutoSaver.Services
 {
@@ -41,25 +39,8 @@ namespace AutoSaver.Services
 
         public static IntPtr GetForegroundWindowHandle() => GetForegroundWindow();
 
-        [DllImport("kernel32.dll")]
-        private static extern uint GetCurrentThreadId();
-
-        [DllImport("user32.dll")]
-        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-
         [DllImport("user32.dll")]
         private static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
-
-        [DllImport("user32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        private static extern bool AllowSetForegroundWindow(int dwProcessId);
-
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        private const int SW_RESTORE = 9;
 
         private static readonly object PidSnapshotLock = new object();
         private static DateTime _pidSnapshotUtc;
@@ -173,74 +154,15 @@ namespace AutoSaver.Services
         }
 
         /// <summary>
-        /// Activate each window and send Ctrl+S via SendKeys on the UI thread (STA).
+        /// 仅通过 PostMessage 向前台 HWND 注入 Ctrl+S，不改变窗口形态与焦点。
         /// </summary>
         public static void SendCtrlSToWindows(IReadOnlyList<IntPtr> hwnds)
         {
             if (hwnds == null || hwnds.Count == 0) return;
-
-            void Run()
+            foreach (var hwnd in hwnds)
             {
-                foreach (var hwnd in hwnds)
-                {
-                    if (hwnd == IntPtr.Zero) continue;
-                    TryActivateAndSendCtrlS(hwnd);
-                    Thread.Sleep(100);
-                }
-            }
-
-            var app = System.Windows.Application.Current;
-            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
-                app.Dispatcher.Invoke(Run);
-            else
-                Run();
-        }
-
-        private static void TryActivateAndSendCtrlS(IntPtr hwnd)
-        {
-            try
-            {
-                uint selfThreadId = GetCurrentThreadId();
-                IntPtr fgHwnd = GetForegroundWindow();
-                uint fgThreadId = fgHwnd != IntPtr.Zero
-                    ? GetWindowThreadProcessId(fgHwnd, out _)
-                    : selfThreadId;
-                uint targetThreadId = GetWindowThreadProcessId(hwnd, out uint targetPid);
-
-                bool linkedFg = false;
-                bool linkedTarget = false;
-                try
-                {
-                    AllowSetForegroundWindow(-1);
-
-                    if (fgThreadId != selfThreadId && fgThreadId != targetThreadId)
-                        linkedFg = AttachThreadInput(selfThreadId, fgThreadId, true);
-                    if (targetThreadId != selfThreadId)
-                        linkedTarget = AttachThreadInput(selfThreadId, targetThreadId, true);
-
-                    ShowWindow(hwnd, SW_RESTORE);
-                    AllowSetForegroundWindow((int)targetPid);
-                    SetForegroundWindow(hwnd);
-                    Thread.Sleep(120);
-                    SendKeys.SendWait("^s");
-                }
-                finally
-                {
-                    if (linkedTarget)
-                        AttachThreadInput(selfThreadId, targetThreadId, false);
-                    if (linkedFg)
-                        AttachThreadInput(selfThreadId, fgThreadId, false);
-                }
-            }
-            catch
-            {
-                try
-                {
-                    BringToFront(hwnd);
-                    Thread.Sleep(120);
-                    SendKeys.SendWait("^s");
-                }
-                catch { }
+                if (hwnd == IntPtr.Zero) continue;
+                SendCtrlS(hwnd);
             }
         }
 
@@ -279,18 +201,6 @@ namespace AutoSaver.Services
             }, IntPtr.Zero);
 
             return hwnds;
-        }
-
-        public static void BringToFront(IntPtr hWnd)
-        {
-            ShowWindow(hWnd, SW_RESTORE);
-            // Windows blocks SetForegroundWindow unless the calling thread already owns
-            // the foreground. AllowSetForegroundWindow grants the target process permission
-            // to steal the foreground, which is required when called from a background thread
-            // or after the notification overlay has started hiding.
-            GetWindowThreadProcessId(hWnd, out var pid);
-            AllowSetForegroundWindow((int)pid);
-            SetForegroundWindow(hWnd);
         }
 
         public static int GetWindowCountByExe(string exeName)

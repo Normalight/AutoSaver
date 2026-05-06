@@ -56,8 +56,8 @@ namespace AutoSaver.Services
     }
 
     /// <summary>
-    /// 仅跟踪当前前台窗口：配置列表为白名单。
-    /// 切换到其他监控项或不在白名单内的前台时重置倒计时；同一进程下仅 HWND 变化（模态框、印章等弹窗）不重置。
+    /// 全局单一倒计时：不因切换窗口或更换前台监控程序而重置；仅在前台不在白名单时暂停递减；
+    /// 主窗口关闭（仅托盘）时暂停 Timer；退出进程时 <see cref="StopAll"/> 清空。
     /// </summary>
     public class SaveScheduler
     {
@@ -68,6 +68,8 @@ namespace AutoSaver.Services
         private Timer _timer;
         private int _globalIntervalSec = 30;
         private int _tickGate;
+
+        private bool _pausedByTray;
 
         private IntPtr _slotHwnd = IntPtr.Zero;
         private string _slotProgramId;
@@ -88,10 +90,25 @@ namespace AutoSaver.Services
             lock (_lock)
             {
                 StopInternal();
+                _pausedByTray = false;
                 _timer = new Timer(TickMs);
                 _timer.AutoReset = true;
                 _timer.Elapsed += OnSecondTick;
                 _timer.Start();
+            }
+        }
+
+        /// <summary>主窗口关闭仅留托盘时暂停 1s Timer；重新打开主窗口时恢复。</summary>
+        public void SetTrayPaused(bool paused)
+        {
+            lock (_lock)
+            {
+                _pausedByTray = paused;
+                if (_timer == null) return;
+                if (paused)
+                    _timer.Stop();
+                else
+                    _timer.Start();
             }
         }
 
@@ -156,6 +173,7 @@ namespace AutoSaver.Services
                 StopInternal();
                 _programs.Clear();
                 ClearSlotUnlocked();
+                _pausedByTray = false;
             }
 
             WindowService.InvalidatePidSnapshot();
@@ -213,16 +231,12 @@ namespace AutoSaver.Services
             {
                 if (!WindowService.TryGetForegroundProcess(out var fgHwnd, out _, out var exePath))
                 {
-                    lock (_lock)
-                        ClearSlotUnlocked();
                     RaiseUiTick(IntPtr.Zero, null);
                     return;
                 }
 
                 if (Path.GetFileName(exePath).Equals("autosaver.exe", StringComparison.OrdinalIgnoreCase))
                 {
-                    lock (_lock)
-                        ClearSlotUnlocked();
                     RaiseUiTick(IntPtr.Zero, null);
                     return;
                 }
@@ -235,33 +249,24 @@ namespace AutoSaver.Services
 
                 if (match == null)
                 {
-                    lock (_lock)
-                        ClearSlotUnlocked();
                     RaiseUiTick(fgHwnd, null);
                     return;
                 }
 
                 lock (_lock)
                 {
-                    // 仅当「监控的程序条目」变化时重置间隔；同一条目下 HWND 随弹窗/子窗口变化不算切换。
-                    bool programChanged = _slotProgramId == null ||
-                        !string.Equals(_slotProgramId, match.Id, StringComparison.Ordinal);
-
                     _slotHwnd = fgHwnd;
                     _slotProgramId = match.Id;
 
-                    if (programChanged)
-                    {
+                    if (_slotRemainingSec <= 0)
                         _slotRemainingSec = EffectiveInterval(match);
-                    }
-                    else if (_slotRemainingSec > 0)
-                    {
+                    else
                         _slotRemainingSec--;
-                        if (_slotRemainingSec == 0)
-                        {
-                            AddSave(toSave, match, fgHwnd);
-                            _slotRemainingSec = EffectiveInterval(match);
-                        }
+
+                    if (_slotRemainingSec == 0)
+                    {
+                        AddSave(toSave, match, fgHwnd);
+                        _slotRemainingSec = EffectiveInterval(match);
                     }
                 }
 
@@ -357,13 +362,7 @@ namespace AutoSaver.Services
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
 
-            if (WindowService.GetForegroundWindowHandle() != expectedHwnd)
-                return;
-
-            if (!WindowService.TryMatchForegroundExe(prog.Exe, out var hwnd))
-                return;
-
-            if (hwnd != expectedHwnd)
+            if (!IsForegroundStillMatchingSave(prog, expectedHwnd, out var hwnd))
                 return;
 
             var before = WindowService.GetWindowCountByExe(prog.Exe);
@@ -372,6 +371,10 @@ namespace AutoSaver.Services
                 SaveDone?.Invoke(prog.Id, timestamp, 0);
                 return;
             }
+
+            // 队列异步执行到这里时焦点可能已变：不一致则本次作废（不落日志、不发通知），下一轮倒计时再试。
+            if (!IsForegroundStillMatchingSave(prog, expectedHwnd, out hwnd))
+                return;
 
             WindowService.SendCtrlSToWindows(new List<IntPtr> { hwnd });
 
@@ -388,16 +391,7 @@ namespace AutoSaver.Services
                     Status = SaveStatus.NeedsConfirm,
                     Message = "检测到保存对话框，请手动选择保存位置",
                     WindowCount = 1,
-                    JumpAction = () =>
-                    {
-                        try
-                        {
-                            var all = WindowService.GetAllWindowsByExe(prog.Exe);
-                            if (all.Count > 0)
-                                WindowService.BringToFront(all[all.Count - 1]);
-                        }
-                        catch { }
-                    }
+                    JumpAction = null
                 });
                 return;
             }
@@ -410,6 +404,16 @@ namespace AutoSaver.Services
                 Message = "已向前台窗口发送 Ctrl+S（是否写入文件由目标程序决定）",
                 WindowCount = 1
             });
+        }
+
+        private static bool IsForegroundStillMatchingSave(ProgramItem prog, IntPtr expectedHwnd, out IntPtr hwnd)
+        {
+            hwnd = IntPtr.Zero;
+            if (WindowService.GetForegroundWindowHandle() != expectedHwnd)
+                return false;
+            if (!WindowService.TryMatchForegroundExe(prog.Exe, out hwnd))
+                return false;
+            return hwnd == expectedHwnd;
         }
     }
 }

@@ -5,6 +5,17 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.5] - 2026-05-06
+
+### Changed
+- **Updates / downloads**: GitHub API and installer downloads now honor **system proxy** (`WebRequest.GetSystemWebProxy`) and **`HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY`** environment variables; TLS 1.2+ enabled; clearer HTTP error bodies on failure.
+- **Auto-save input**: Saving uses **`PostMessage`-only Ctrl+S** (no `SendKeys`, activation, or `ShowWindow`). Removed **`BringToFront`** / `SetForegroundWindow` from the codebase.
+- **Save countdown**: Single global countdown — **does not reset** when switching monitored apps or HWNDs; **pauses** when the foreground app is not on the whitelist; **pauses the 1s timer** when the main window is closed (tray only); state cleared on exit via `StopAll`.
+- **Save eligibility**: If foreground no longer matches immediately before sending keys (e.g. race after `Task.Run`), the attempt is **skipped silently** with no success toast — next interval retries.
+
+### Removed
+- Notification **“jump to window”** action on save-dialog prompts (`JumpAction` removed).
+
 ## [1.5.4] - 2026-05-06
 
 ### Fixed
