@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using AutoSaver.Models;
 using AutoSaver.Services;
+using Microsoft.Win32;
 
 namespace AutoSaver.Views
 {
@@ -18,7 +21,6 @@ namespace AutoSaver.Views
         private static readonly SolidColorBrush MutedBrush = new SolidColorBrush(Color.FromRgb(0x8E, 0x8E, 0x98));
 
         public event Action<ProgramItem> ProgramAdded;
-        public event Action<ProgramItem> ProgramEdited;
         public event Action<string> ProgramDeleted;
 
         public MainWindow(List<ProgramItem> programs)
@@ -31,30 +33,31 @@ namespace AutoSaver.Views
 
         public void RefreshList()
         {
+            var selected = (ProgramListView.SelectedItem as ProgramDisplay)?.Id;
+
             var displayItems = _programs.Select(p =>
             {
                 var isRunning = _statuses.TryGetValue(p.Id, out var running) && running == "running";
-                _lastSaves.TryGetValue(p.Name, out var lastSave);
                 return new ProgramDisplay
                 {
                     Id = p.Id,
                     Name = p.Name,
                     Exe = p.Exe,
                     ExeSummary = CreateExeSummary(p.Exe),
-                    IntervalText = FormatInterval(p.SaveIntervalSec),
-                    StatusText = isRunning ? "运行中" : "未检测到",
-                    StatusBadgeText = isRunning ? "监控中" : "等待启动",
                     StatusColor = isRunning ? SuccessBrush : MutedBrush,
-                    LastSaveText = lastSave == null
-                        ? "最近保存：暂无记录"
-                        : $"最近保存：{lastSave.Item1} · {lastSave.Item2} 个窗口"
+                    Enabled = p.Enabled,
                 };
             }).ToList();
 
             ProgramListView.ItemsSource = displayItems;
-            ProgramCountLabel.Text = _programs.Count.ToString();
-            RunningCountLabel.Text = _programs.Count(p => _statuses.TryGetValue(p.Id, out var running) && running == "running").ToString();
-            UpdateStatusBar();
+
+            if (selected != null)
+            {
+                var item = displayItems.FirstOrDefault(d => d.Id == selected);
+                if (item != null) ProgramListView.SelectedItem = item;
+            }
+
+            UpdateDeleteButton();
         }
 
         public void UpdateProgramStatus(string programId, bool running)
@@ -69,72 +72,97 @@ namespace AutoSaver.Views
             if (prog != null)
             {
                 _lastSaves[prog.Name] = Tuple.Create(timestamp, windowCount);
-                UpdateStatusBar();
                 RefreshList();
             }
+        }
+
+        private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateDeleteButton();
+        }
+
+        private void UpdateDeleteButton()
+        {
+            DeleteButton.IsEnabled = ProgramListView.SelectedItem != null;
         }
 
         private static string CreateExeSummary(string exe)
         {
             if (string.IsNullOrWhiteSpace(exe)) return "未配置路径";
-            var fileName = System.IO.Path.GetFileName(exe);
+            var fileName = Path.GetFileName(exe);
             return string.IsNullOrEmpty(fileName) ? exe : fileName;
-        }
-
-        private static string FormatInterval(int seconds)
-        {
-            if (seconds % 3600 == 0) return $"保存间隔：{seconds / 3600} 小时";
-            if (seconds % 60 == 0) return $"保存间隔：{seconds / 60} 分钟";
-            return $"保存间隔：{seconds} 秒";
-        }
-
-        private void UpdateStatusBar()
-        {
-            if (_lastSaves.Count > 0)
-            {
-                var parts = _lastSaves.Select(kv => $"{kv.Key} {kv.Value.Item1} ({kv.Value.Item2}窗口)");
-                StatusLabel.Text = "上次保存: " + string.Join(", ", parts);
-            }
-            else
-            {
-                StatusLabel.Text = "";
-            }
         }
 
         private void OnAddClick(object sender, RoutedEventArgs e)
         {
-            var dlg = new AddEditDialog();
-            dlg.Owner = this;
-            if (dlg.ShowDialog() == true && dlg.Result != null)
-            {
-                _programs.Add(dlg.Result);
-                ConfigService.SavePrograms(_programs);
-                RefreshList();
-                ProgramAdded?.Invoke(dlg.Result);
-            }
+            // Show a small menu: browse file or pick running process
+            var menu = new ContextMenu();
+
+            var browseItem = new MenuItem { Header = "📁 选择本地程序" };
+            browseItem.Click += (s, _) => AddByBrowse();
+            menu.Items.Add(browseItem);
+
+            var pickItem = new MenuItem { Header = "📋 从运行中选取" };
+            pickItem.Click += (s, _) => AddByPicker();
+            menu.Items.Add(pickItem);
+
+            menu.PlacementTarget = (Button)sender;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+            menu.IsOpen = true;
         }
 
-        private void OnEditClick(object sender, RoutedEventArgs e)
+        private void AddByBrowse()
         {
-            if (!(sender is FrameworkElement el && el.Tag is ProgramDisplay display)) return;
-            var prog = _programs.FirstOrDefault(p => p.Id == display.Id);
-            if (prog == null) return;
-
-            var dlg = new AddEditDialog(prog);
-            dlg.Owner = this;
-            if (dlg.ShowDialog() == true && dlg.Result != null)
+            var dlg = new OpenFileDialog
             {
-                var idx = _programs.FindIndex(p => p.Id == prog.Id);
-                if (idx >= 0) _programs[idx] = dlg.Result;
-                ConfigService.SavePrograms(_programs);
-                RefreshList();
-                ProgramEdited?.Invoke(dlg.Result);
+                Filter = "可执行文件 (*.exe)|*.exe",
+                Title = "选择目标程序"
+            };
+            try { dlg.InitialDirectory = @"C:\Program Files"; }
+            catch { dlg.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop); }
+
+            if (dlg.ShowDialog() != true) return;
+
+            var exe = Path.GetFileName(dlg.FileName);
+            var name = Path.GetFileNameWithoutExtension(dlg.FileName);
+            AddProgram(name, exe);
+        }
+
+        private void AddByPicker()
+        {
+            var picker = new ProcessPickerDialog { Owner = this };
+            if (picker.ShowDialog() != true || string.IsNullOrEmpty(picker.SelectedProcessName)) return;
+
+            var exe = picker.SelectedProcessName;
+            var name = Path.GetFileNameWithoutExtension(exe);
+            AddProgram(name, exe);
+        }
+
+        private void AddProgram(string name, string exe)
+        {
+            if (_programs.Any(p => p.Exe.Equals(exe, StringComparison.OrdinalIgnoreCase)))
+            {
+                MessageBox.Show($""{exe}" 已在列表中。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
+
+            var prog = new ProgramItem
+            {
+                Name = name,
+                Exe = exe,
+                Enabled = true,
+                SaveIntervalSec = ConfigService.CheckIntervalSec
+            };
+
+            _programs.Add(prog);
+            ConfigService.SavePrograms(_programs);
+            RefreshList();
+            ProgramAdded?.Invoke(prog);
         }
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
-            if (!(sender is FrameworkElement el && el.Tag is ProgramDisplay display)) return;
+            if (!(ProgramListView.SelectedItem is ProgramDisplay display)) return;
 
             var result = MessageBox.Show(
                 $"确定要删除 \"{display.Name}\" 吗？",
@@ -149,10 +177,20 @@ namespace AutoSaver.Views
             ProgramDeleted?.Invoke(display.Id);
         }
 
+        private void OnToggleEnabledClick(object sender, RoutedEventArgs e)
+        {
+            if (!((sender as FrameworkElement)?.Tag is ProgramDisplay display)) return;
+            var prog = _programs.FirstOrDefault(p => p.Id == display.Id);
+            if (prog == null) return;
+
+            prog.Enabled = !prog.Enabled;
+            ConfigService.SavePrograms(_programs);
+            RefreshList();
+        }
+
         private void OnSettingsClick(object sender, RoutedEventArgs e)
         {
-            var dlg = new SettingsDialog();
-            dlg.Owner = this;
+            var dlg = new SettingsDialog { Owner = this };
             dlg.ShowDialog();
         }
 
@@ -164,18 +202,12 @@ namespace AutoSaver.Views
                 ToggleMaximizeRestore();
                 return;
             }
-
             DragMove();
         }
 
         private void OnMinimizeClick(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;
-        }
-
-        private void OnMaximizeRestoreClick(object sender, RoutedEventArgs e)
-        {
-            ToggleMaximizeRestore();
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)

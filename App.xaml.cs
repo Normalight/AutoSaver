@@ -171,7 +171,6 @@ namespace AutoSaver
                 _mainWindow.UpdateProgramStatus(prog.Id, _monitor.GetStatus(prog.Id));
 
             _mainWindow.ProgramAdded += OnProgramAdded;
-            _mainWindow.ProgramEdited += OnProgramEdited;
             _mainWindow.ProgramDeleted += OnProgramDeleted;
 
             _mainWindow.Closed += (s, e) => { _mainWindow = null; };

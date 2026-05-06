@@ -1,8 +1,8 @@
 <Window x:Class="AutoSaver.Views.ProcessPickerDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="选择正在运行的程序" Height="420" Width="360"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Title="选择正在运行的程序" Height="420" Width="340"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent">
 
     <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource DividerColor}" BorderThickness="1" CornerRadius="12">
