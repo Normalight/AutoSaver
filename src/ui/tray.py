@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 from PySide6.QtGui import QAction, QIcon
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 logger = logging.getLogger(__name__)
 

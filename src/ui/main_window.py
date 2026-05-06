@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from datetime import datetime
 
 import winreg
 from PySide6.QtCore import Qt, Signal
@@ -137,8 +136,18 @@ class MainWindow(QMainWindow):
         self._config["programs"] = [
             p for p in self._config.get("programs", []) if p["id"] != program_id
         ]
+        self._last_save_info = {
+            k: v for k, v in self._last_save_info.items()
+            if k != self._find_program_name(program_id)
+        }
         self._refresh_table()
         self.program_deleted.emit(program_id)
+
+    def _find_program_name(self, program_id: str) -> str:
+        for prog in self._config.get("programs", []):
+            if prog["id"] == program_id:
+                return prog.get("name", "")
+        return ""
 
     def _on_toggle_pause(self) -> None:
         self._paused = not self._paused
