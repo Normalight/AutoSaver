@@ -51,6 +51,9 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "
 Filename: "{app}\{#MyAppExeName}"; Description: "安装完成后立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$ql = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch'; New-Item -ItemType Directory -Force -Path $ql | Out-Null; $w = New-Object -ComObject WScript.Shell; $s = $w.CreateShortcut((Join-Path $ql '{#MyAppName}.lnk')); $s.TargetPath = '{app}\{#MyAppExeName}'; $s.WorkingDirectory = '{app}'; $s.IconLocation = '{app}\app-icon.ico'; $s.Save()"""; Description: "将快捷方式添加到「快速启动」栏"; Flags: postinstall skipifsilent runhidden
 
+[UninstallDelete]
+Type: files; Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}.lnk"
+
 [UninstallRun]
 ; taskkill 返回码非 0（进程不存在）时仍需卸载继续，故由 cmd 吞掉错误
 Filename: "{sys}\cmd.exe"; Parameters: "/c taskkill /F /IM {#MyAppExeName} /T >nul 2>&1 & exit /b 0"; Flags: runhidden
