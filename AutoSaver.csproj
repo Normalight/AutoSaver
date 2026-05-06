@@ -97,6 +97,14 @@
       <DependentUpon>SettingsDialog.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Views\NotificationOverlay.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\NotificationOverlay.xaml.cs">
+      <DependentUpon>NotificationOverlay.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <EmbeddedResource Include="Resources\app-icon.png" />
     <Content Include="Resources\app-icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

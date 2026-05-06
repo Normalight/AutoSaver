@@ -55,6 +55,12 @@ namespace AutoSaver.Services
             set => Write("global", "minimize_to_tray_on_close", value ? "true" : "false");
         }
 
+        public static bool ShowNotifications
+        {
+            get => Read("global", "show_notifications", "true") == "true";
+            set => Write("global", "show_notifications", value ? "true" : "false");
+        }
+
         public static List<ProgramItem> LoadPrograms()
         {
             var programs = new List<ProgramItem>();

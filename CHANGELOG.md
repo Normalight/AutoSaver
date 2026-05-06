@@ -5,7 +5,17 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2026-05-06
+## [1.1.0] - 2026-05-06
+
+### Added
+- Desktop notification overlay: slides in from top of screen on each auto-save event
+- Three notification types: ✓ success (green, auto-dismisses 4s), ⚠ needs confirmation (yellow, with jump-to-window button), ✕ failed (red, with close button)
+- Notification animations: CubicEase slide-in (300ms) and slide-out (250ms)
+- Settings toggle for save notifications (`show_notifications` in INI)
+
+### Changed
+- `SaveScheduler` now emits `SaveCompleted` event with `SaveResult` (status, message, jump action)
+- Zero-window saves are reported as `NeedsConfirm` instead of silently succeeding
 
 ### Changed
 - Simplified INI format: removed redundant `[programs] count` key, programs loaded by scanning sections until empty

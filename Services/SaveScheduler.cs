@@ -8,12 +8,24 @@ using Timer = System.Timers.Timer;
 
 namespace AutoSaver.Services
 {
+    public enum SaveStatus { Success, NeedsConfirm, Failed }
+
+    public class SaveResult
+    {
+        public ProgramItem Program { get; set; }
+        public SaveStatus Status { get; set; }
+        public string Message { get; set; }
+        public int WindowCount { get; set; }
+        public Action JumpAction { get; set; }
+    }
+
     public class SaveScheduler
     {
         private readonly Dictionary<string, TimerInfo> _timers = new Dictionary<string, TimerInfo>();
         private readonly object _lock = new object();
 
         public event Action<string, string, int> SaveDone;
+        public event Action<SaveResult> SaveCompleted;
 
         private class TimerInfo
         {
@@ -92,15 +104,48 @@ namespace AutoSaver.Services
             try
             {
                 var hwnds = WindowService.GetWindowsByExe(prog.Exe);
+                var timestamp = DateTime.Now.ToString("HH:mm:ss");
+
+                if (hwnds.Count == 0)
+                {
+                    // Program may be running but no visible window — needs attention
+                    SaveDone?.Invoke(prog.Id, timestamp, 0);
+                    SaveCompleted?.Invoke(new SaveResult
+                    {
+                        Program = prog,
+                        Status = SaveStatus.NeedsConfirm,
+                        Message = "未找到可见窗口，请手动确认",
+                        WindowCount = 0,
+                        JumpAction = () =>
+                        {
+                            try { Process.Start(prog.Exe); } catch { }
+                        }
+                    });
+                    return;
+                }
+
                 foreach (var hwnd in hwnds)
                     WindowService.SendCtrlS(hwnd);
 
-                var timestamp = DateTime.Now.ToString("HH:mm:ss");
                 SaveDone?.Invoke(prog.Id, timestamp, hwnds.Count);
+                SaveCompleted?.Invoke(new SaveResult
+                {
+                    Program = prog,
+                    Status = SaveStatus.Success,
+                    Message = $"已保存 {hwnds.Count} 个窗口",
+                    WindowCount = hwnds.Count
+                });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"SaveScheduler.DoSave failed for {prog.Name}: {ex.Message}");
+                SaveCompleted?.Invoke(new SaveResult
+                {
+                    Program = prog,
+                    Status = SaveStatus.Failed,
+                    Message = ex.Message,
+                    WindowCount = 0
+                });
             }
         }
     }

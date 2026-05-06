@@ -21,6 +21,7 @@ namespace AutoSaver
         private SaveScheduler _scheduler;
         private List<ProgramItem> _programs;
         private MainWindow _mainWindow;
+        private NotificationOverlay _notification;
         private string _logPath;
         private string _iconTempPath;
 
@@ -53,6 +54,7 @@ namespace AutoSaver
 
             _scheduler = new SaveScheduler();
             _scheduler.SaveDone += OnSaveDone;
+            _scheduler.SaveCompleted += OnSaveCompleted;
 
             foreach (var prog in _programs)
                 _scheduler.AddProgram(prog);
@@ -152,7 +154,21 @@ namespace AutoSaver
             _mainWindow.Show();
         }
 
-        private void ShowSettings()
+        private void ShowNotification(SaveResult result)
+        {
+            if (_notification == null)
+                _notification = new NotificationOverlay();
+
+            var type = result.Status switch
+            {
+                SaveStatus.Success => NotificationType.Success,
+                SaveStatus.NeedsConfirm => NotificationType.NeedsConfirm,
+                SaveStatus.Failed => NotificationType.Failed,
+                _ => NotificationType.Success
+            };
+
+            _notification.Show(result.Program.Name, result.Message, type, result.JumpAction);
+        }
         {
             var dlg = new SettingsDialog();
             dlg.Owner = _mainWindow; // may be null, that's fine
@@ -182,6 +198,12 @@ namespace AutoSaver
                 _mainWindow?.UpdateLastSave(programId, timestamp, windowCount);
             });
             Log($"Saved: {programId} at {timestamp}, {windowCount} window(s)");
+        }
+
+        private void OnSaveCompleted(SaveResult result)
+        {
+            if (!ConfigService.ShowNotifications) return;
+            Dispatcher.Invoke(() => ShowNotification(result));
         }
 
         private void OnProgramAdded(ProgramItem prog)

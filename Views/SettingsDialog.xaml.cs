@@ -17,6 +17,7 @@ namespace AutoSaver.Views
             IntervalBox.Text = ConfigService.CheckIntervalSec.ToString();
             StartupCheck.IsChecked = ConfigService.StartWithWindows;
             TrayCloseCheck.IsChecked = ConfigService.MinimizeToTrayOnClose;
+            NotifyCheck.IsChecked = ConfigService.ShowNotifications;
         }
 
         private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -34,6 +35,7 @@ namespace AutoSaver.Views
             ConfigService.CheckIntervalSec = interval;
             ConfigService.StartWithWindows = StartupCheck.IsChecked == true;
             ConfigService.MinimizeToTrayOnClose = TrayCloseCheck.IsChecked == true;
+            ConfigService.ShowNotifications = NotifyCheck.IsChecked == true;
 
             // Apply theme immediately
             ThemeService.ApplyTheme(Application.Current);
