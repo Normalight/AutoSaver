@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.8] - 2026-05-07
+
+### Changed
+- **Startup with Windows**: `StartupService` now opens HKCU `...\Run` via `CreateSubKey`, sets values as explicit `REG_SZ`, and writes failures to **`autosaver.log`** with the **`[StartupService]`** prefix (policy/security deny, missing exe path, etc.) instead of failing silently.
+
 ## [1.5.7] - 2026-05-06
 
 ### Fixed
