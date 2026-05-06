@@ -5,13 +5,15 @@
         Title="关于 AutoSaver" Height="620" Width="520"
         MinHeight="560" MinWidth="480"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        WindowStyle="None" ResizeMode="NoResize">
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="True" Background="Transparent">
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
+        <shell:WindowChrome CaptionHeight="0" CornerRadius="12" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <Border Background="{DynamicResource WindowBackground}">
+    <Border Background="{DynamicResource WindowBackground}"
+            BorderBrush="{DynamicResource DividerColor}" BorderThickness="1" CornerRadius="12">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

@@ -18,6 +18,23 @@ namespace AutoSaver.Services
         private const string ApiUrl =
             "https://api.github.com/repos/Normalight/AutoSaver/releases/latest";
 
+        /// <summary>
+        /// Format string for the installer asset uploaded by CI/Inno (with extension).
+        /// Must stay in sync with <c>installer/autosaver.iss</c>
+        /// <c>OutputBaseFilename</c> (which becomes this name; Inno adds .exe).
+        /// If you change one, change the other.
+        /// </summary>
+        public const string InstallerAssetFileNameFormat = "AutoSaver-{0}-Setup.exe";
+
+        /// <summary>
+        /// Expected GitHub release asset filename for a semantic version (e.g. 1.4.0).
+        /// </summary>
+        public static string GetExpectedInstallerAssetFileName(string semanticVersion)
+        {
+            if (string.IsNullOrEmpty(semanticVersion)) return "";
+            return string.Format(InstallerAssetFileNameFormat, semanticVersion);
+        }
+
         // GitHub API requires a User-Agent header.
         private static string UserAgent =>
             $"AutoSaver/{App.Version} (update-check)";
@@ -156,7 +173,7 @@ namespace AutoSaver.Services
             result.ReleaseNotes = ExtractStringValue(json, "body");
 
             // Installer asset: look for the browser_download_url whose name matches
-            // "AutoSaver-X.Y.Z-Setup.exe". We scan the assets array by finding
+            // GetExpectedInstallerAssetFileName(...). We scan the assets array by finding
             // the asset name first, then the download URL that follows it.
             result.InstallerUrl = FindInstallerUrl(json, result.LatestVersion);
         }
@@ -248,8 +265,7 @@ namespace AutoSaver.Services
         {
             if (string.IsNullOrEmpty(latestVersion)) return "";
 
-            // Must match installer/autosaver.iss OutputBaseFilename → AutoSaver-{ver}-Setup.exe
-            var expectedName = $"AutoSaver-{latestVersion}-Setup.exe";
+            var expectedName = GetExpectedInstallerAssetFileName(latestVersion);
 
             // Find the assets array
             var assetsIdx = json.IndexOf("\"assets\"", StringComparison.Ordinal);

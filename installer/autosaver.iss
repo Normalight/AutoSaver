@@ -19,6 +19,9 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\dist
+; Installer output basename (Inno appends .exe). MUST match the GitHub release asset name
+; built in UpdateService.GetExpectedInstallerAssetFileName — see Services/UpdateService.cs
+; (InstallerAssetFileNameFormat = "AutoSaver-{0}-Setup.exe").
 OutputBaseFilename=AutoSaver-{#MyAppVersion}-Setup
 Compression=lzma2
 SolidCompression=yes
