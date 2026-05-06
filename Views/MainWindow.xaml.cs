@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -117,7 +116,7 @@ namespace AutoSaver.Views
             {
                 var path = GetExePath(exe);
                 if (string.IsNullOrEmpty(path)) return null;
-                var icon = Icon.ExtractAssociatedIcon(path);
+                var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
                 if (icon == null) return null;
                 return Imaging.CreateBitmapSourceFromHIcon(
                     icon.Handle,
