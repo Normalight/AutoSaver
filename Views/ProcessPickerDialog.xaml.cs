@@ -18,17 +18,6 @@ namespace AutoSaver.Views
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int GetWindowTextLength(IntPtr hWnd);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
-
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
-
-        [DllImport("kernel32.dll")]
-        private static extern bool CloseHandle(IntPtr hObject);
-
-        private const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
-
         private static readonly HashSet<string> Blacklist = new HashSet<string>(
             new[] { "system", "system idle process", "svchost", "csrss", "smss",
                     "wininit", "services", "lsass", "winlogon", "taskmgr", "autosaver" },

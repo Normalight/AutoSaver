@@ -23,7 +23,7 @@ namespace AutoSaver.Models
 
         /// <summary>
         /// Direct download URL for the installer asset
-        /// (AutoSaver-Setup-vX.Y.Z.exe).  Empty when no installer asset was found.
+        /// (AutoSaver-X.Y.Z-Setup.exe). Empty when no installer asset was found.
         /// </summary>
         public string InstallerUrl { get; set; } = "";
 

@@ -256,6 +256,12 @@ namespace AutoSaver.Views
                 SettingsSaved?.Invoke();
         }
 
+        private void OnAboutClick(object sender, RoutedEventArgs e)
+        {
+            if (Application.Current is App app)
+                app.OpenAboutDialog(this);
+        }
+
         private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton != MouseButton.Left) return;

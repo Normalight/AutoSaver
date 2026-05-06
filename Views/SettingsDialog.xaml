@@ -125,16 +125,16 @@
 
                                 <Separator/>
 
-                                <Grid>
+                                <Grid Margin="0,0,0,16">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="保存通知" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="保存完成后显示通知提示。" Style="{StaticResource Caption}" Margin="0,5,0,0"/>
+                                        <TextBlock Text="启动时自动检查更新" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="应用启动后自动检查 GitHub 上是否有新版本。" Style="{StaticResource Caption}" Margin="0,5,0,0"/>
                                     </StackPanel>
-                                    <CheckBox x:Name="NotifyCheck" Grid.Column="1" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="CheckUpdatesCheck" Grid.Column="1" VerticalAlignment="Center"/>
                                 </Grid>
 
                                 <Separator/>
@@ -145,10 +145,10 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="启动时自动检查更新" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="启动时联网检查是否有新版本。" Style="{StaticResource Caption}" Margin="0,5,0,0"/>
+                                        <TextBlock Text="保存通知" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="保存完成后显示通知提示。" Style="{StaticResource Caption}" Margin="0,5,0,0"/>
                                     </StackPanel>
-                                    <CheckBox x:Name="CheckUpdatesCheck" Grid.Column="1" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="NotifyCheck" Grid.Column="1" VerticalAlignment="Center"/>
                                 </Grid>
                             </StackPanel>
                         </StackPanel>

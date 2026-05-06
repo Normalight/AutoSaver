@@ -106,6 +106,14 @@
       <DependentUpon>SettingsDialog.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Views\AboutDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\AboutDialog.xaml.cs">
+      <DependentUpon>AboutDialog.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Page Include="Views\NotificationOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

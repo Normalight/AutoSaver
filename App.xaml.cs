@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
@@ -27,9 +28,12 @@ namespace AutoSaver
         private NotificationOverlay _notification;
         private string _logPath;
         private string _iconTempPath;
+        private UpdateCheckResult _lastUpdateCheckResult;
+        private bool _isCheckingUpdates;
 
         public static string Version { get; private set; } = GetAssemblyVersion();
         public static string CurrentReleaseNotes { get; private set; } = "";
+        public static string RepositoryUrl => "https://github.com/Normalight/AutoSaver";
 
         private void OnStartup(object sender, StartupEventArgs e)
         {
@@ -43,16 +47,18 @@ namespace AutoSaver
 
             ConfigService.EnsureDefaults();
 
+            var assemblyVersion = GetAssemblyVersion();
+            Version = assemblyVersion;
             var iniVersion = ConfigService.AppVersion;
-            if (!string.IsNullOrWhiteSpace(iniVersion))
-                Version = iniVersion;
-            else
-            {
-                Version = GetAssemblyVersion();
+            if (string.IsNullOrWhiteSpace(iniVersion))
                 ConfigService.AppVersion = Version;
-            }
 
             CurrentReleaseNotes = ChangelogService.GetReleaseNotes(changelogPath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md"), version: Version);
+            _lastUpdateCheckResult = new UpdateCheckResult
+            {
+                CurrentVersion = Version,
+                ReleaseNotes = CurrentReleaseNotes
+            };
 
             // Theme must be first - applies to all windows
             ThemeService.InitTheme(this);
@@ -85,6 +91,16 @@ namespace AutoSaver
 
             SetupTray();
             ShowMainWindow();
+
+            if (ConfigService.CheckUpdatesOnStartup)
+                BeginBackgroundUpdateCheck();
+        }
+
+        public static string GetFallbackReleaseNotes(string version)
+        {
+            return ChangelogService.GetReleaseNotes(
+                changelogPath: Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md"),
+                version: version);
         }
 
         private static string GetAssemblyVersion()
@@ -222,6 +238,150 @@ namespace AutoSaver
             _monitor.Stop();
             _monitor.Start(ConfigService.CheckIntervalSec);
             Log("Settings updated");
+        }
+
+        public UpdateCheckResult GetLastUpdateCheckResult()
+        {
+            return CloneUpdateResult(_lastUpdateCheckResult);
+        }
+
+        public bool IsCheckingUpdates()
+        {
+            return _isCheckingUpdates;
+        }
+
+        public void OpenAboutDialog(Window owner)
+        {
+            var dialog = new AboutDialog();
+            dialog.Owner = owner ?? _mainWindow;
+            dialog.ShowDialog();
+        }
+
+        public void OpenReleasePage(string url)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(url))
+                    return;
+
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Log("Open release page failed: " + ex.Message);
+                MessageBox.Show("无法打开发布页。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        public void BeginBackgroundUpdateCheck(Action<UpdateCheckResult> onCompleted = null)
+        {
+            if (_isCheckingUpdates)
+                return;
+
+            _isCheckingUpdates = true;
+            UpdateService.CheckAsync().ContinueWith(task =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    _isCheckingUpdates = false;
+                    var result = task.Status == System.Threading.Tasks.TaskStatus.RanToCompletion
+                        ? task.Result
+                        : new UpdateCheckResult
+                        {
+                            CurrentVersion = Version,
+                            ErrorMessage = task.Exception?.GetBaseException().Message ?? "检查更新失败。"
+                        };
+                    if (string.IsNullOrWhiteSpace(result.ReleaseNotes))
+                        result.ReleaseNotes = GetFallbackReleaseNotes(result.HasUpdate ? result.LatestVersion : Version);
+                    StoreUpdateCheckResult(result);
+                    onCompleted?.Invoke(CloneUpdateResult(result));
+                });
+            });
+        }
+
+        private void StoreUpdateCheckResult(UpdateCheckResult result)
+        {
+            _lastUpdateCheckResult = CloneUpdateResult(result);
+        }
+
+        private static UpdateCheckResult CloneUpdateResult(UpdateCheckResult source)
+        {
+            if (source == null)
+                return null;
+
+            return new UpdateCheckResult
+            {
+                CurrentVersion = source.CurrentVersion,
+                LatestVersion = source.LatestVersion,
+                HasUpdate = source.HasUpdate,
+                ReleaseNotes = source.ReleaseNotes,
+                ReleaseUrl = source.ReleaseUrl,
+                InstallerUrl = source.InstallerUrl,
+                ErrorMessage = source.ErrorMessage
+            };
+        }
+
+        public void DownloadAndInstallUpdate(UpdateCheckResult result, Action<long, long> onProgress, Action onSucceeded, Action<string, string> onFailed)
+        {
+            var latestVersion = result?.LatestVersion ?? "";
+            var releaseUrl = result?.ReleaseUrl ?? RepositoryUrl + "/releases/latest";
+
+            BeginBackgroundUpdateCheck(refreshed =>
+            {
+                if (refreshed == null)
+                {
+                    onFailed?.Invoke("检查更新失败。", releaseUrl);
+                    return;
+                }
+
+                if (!refreshed.IsSuccess)
+                {
+                    onFailed?.Invoke(string.IsNullOrWhiteSpace(refreshed.ErrorMessage) ? "检查更新失败。" : refreshed.ErrorMessage, refreshed.ReleaseUrl);
+                    return;
+                }
+
+                if (!refreshed.HasUpdate)
+                {
+                    onFailed?.Invoke("当前已是最新版本。", refreshed.ReleaseUrl);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(refreshed.InstallerUrl))
+                {
+                    onFailed?.Invoke("当前版本未提供可自动安装的安装器。", refreshed.ReleaseUrl);
+                    return;
+                }
+
+                var tempPath = Path.Combine(Path.GetTempPath(), $"AutoSaver-Setup-v{refreshed.LatestVersion}.exe");
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        UpdateService.DownloadInstaller(refreshed.InstallerUrl, tempPath, (downloaded, total) =>
+                        {
+                            Dispatcher.Invoke(() => onProgress?.Invoke(downloaded, total));
+                        });
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            try
+                            {
+                                UpdateService.LaunchInstaller(tempPath);
+                                onSucceeded?.Invoke();
+                                Shutdown();
+                            }
+                            catch (Exception ex)
+                            {
+                                onFailed?.Invoke(ex.Message, refreshed.ReleaseUrl);
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Dispatcher.Invoke(() => onFailed?.Invoke(ex.Message, refreshed.ReleaseUrl));
+                    }
+                });
+            });
         }
 
         private void OnStatusChanged(ProgramItem prog, bool running)

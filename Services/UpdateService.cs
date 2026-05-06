@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -16,9 +17,6 @@ namespace AutoSaver.Services
     {
         private const string ApiUrl =
             "https://api.github.com/repos/Normalight/AutoSaver/releases/latest";
-
-        private const string InstallerAssetPrefix = "AutoSaver-Setup-v";
-        private const string InstallerAssetSuffix = ".exe";
 
         // GitHub API requires a User-Agent header.
         private static string UserAgent =>
@@ -62,6 +60,67 @@ namespace AutoSaver.Services
             return result;
         }
 
+        /// <summary>
+        /// Downloads the installer from a GitHub asset URL to disk.
+        /// </summary>
+        public static Task<string> DownloadInstallerAsync(string url, string destinationPath, Action<long, long> onProgress = null)
+        {
+            return Task.Run(() => DownloadInstaller(url, destinationPath, onProgress));
+        }
+
+        /// <summary>
+        /// Synchronous download — prefer calling from a background thread.
+        /// </summary>
+        public static string DownloadInstaller(string url, string destinationPath, Action<long, long> onProgress = null)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                throw new InvalidOperationException("缺少安装器下载地址。");
+
+            if (string.IsNullOrWhiteSpace(destinationPath))
+                throw new InvalidOperationException("缺少安装器保存路径。");
+
+            var directory = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            var req = (HttpWebRequest)WebRequest.Create(url);
+            req.Method = "GET";
+            req.UserAgent = UserAgent;
+            req.Timeout = 30_000;
+            req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+
+            using (var resp = (HttpWebResponse)req.GetResponse())
+            using (var stream = resp.GetResponseStream())
+            using (var file = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                var totalBytes = resp.ContentLength > 0 ? resp.ContentLength : -1;
+                var buffer = new byte[81920];
+                long downloadedBytes = 0;
+                int read;
+                while (stream != null && (read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    file.Write(buffer, 0, read);
+                    downloadedBytes += read;
+                    onProgress?.Invoke(downloadedBytes, totalBytes);
+                }
+            }
+
+            return destinationPath;
+        }
+
+        /// <summary>Starts the downloaded installer with the shell.</summary>
+        public static void LaunchInstaller(string installerPath)
+        {
+            if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
+                throw new FileNotFoundException("安装器文件不存在。", installerPath);
+
+            Process.Start(new ProcessStartInfo(installerPath)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(installerPath) ?? ""
+            });
+        }
+
         // ------------------------------------------------------------------ //
         //  Internals                                                           //
         // ------------------------------------------------------------------ //
@@ -97,7 +156,7 @@ namespace AutoSaver.Services
             result.ReleaseNotes = ExtractStringValue(json, "body");
 
             // Installer asset: look for the browser_download_url whose name matches
-            // "AutoSaver-Setup-vX.Y.Z.exe".  We scan the assets array by finding
+            // "AutoSaver-X.Y.Z-Setup.exe". We scan the assets array by finding
             // the asset name first, then the download URL that follows it.
             result.InstallerUrl = FindInstallerUrl(json, result.LatestVersion);
         }
@@ -189,7 +248,8 @@ namespace AutoSaver.Services
         {
             if (string.IsNullOrEmpty(latestVersion)) return "";
 
-            var expectedName = InstallerAssetPrefix + latestVersion + InstallerAssetSuffix;
+            // Must match installer/autosaver.iss OutputBaseFilename → AutoSaver-{ver}-Setup.exe
+            var expectedName = $"AutoSaver-{latestVersion}-Setup.exe";
 
             // Find the assets array
             var assetsIdx = json.IndexOf("\"assets\"", StringComparison.Ordinal);
