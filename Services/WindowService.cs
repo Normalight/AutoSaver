@@ -189,7 +189,7 @@ namespace AutoSaver.Services
                 }
             }
 
-            var app = Application.Current;
+            var app = System.Windows.Application.Current;
             if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
                 app.Dispatcher.Invoke(Run);
             else
