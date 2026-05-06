@@ -3,110 +3,95 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="AutoSaver" Height="420" Width="560"
         MinHeight="340" MinWidth="480"
-        Background="{StaticResource BgColor}"
         WindowStartupLocation="CenterScreen">
-    <Grid Margin="0">
+
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Border Grid.Row="0" Background="{StaticResource SurfaceColor}"
+        <!-- Header bar -->
+        <Border Grid.Row="0" Background="{StaticResource BgSecondary}"
                 BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
-                Padding="20,16">
+                Padding="20,14">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                    <TextBlock Text="AutoSaver" FontSize="20" FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimary}"/>
-                    <TextBlock Text="v1.0" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="AutoSaver" Style="{StaticResource H1}"/>
+                    <TextBlock Text="v1.0" Style="{StaticResource Caption}"
                                VerticalAlignment="Bottom" Margin="8,0,0,2"/>
-                    <Button x:Name="AddButton" Content="+ 添加" Style="{StaticResource PrimaryButton}"
-                            HorizontalAlignment="Right" Click="OnAddClick" Margin="0,0,0,0"/>
                 </StackPanel>
-
-                <ListView x:Name="ProgramListView" Grid.Row="1"
-                          Background="Transparent" BorderThickness="0"
-                          Foreground="{StaticResource TextPrimary}">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="程序名" Width="130">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Name}" FontSize="13"
-                                                   Foreground="{StaticResource TextPrimary}"
-                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="状态" Width="100">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Ellipse Width="8" Height="8" Margin="0,0,6,0"
-                                                     Fill="{Binding StatusColor}"/>
-                                            <TextBlock Text="{Binding StatusText}" FontSize="12"
-                                                       Foreground="{Binding StatusColor}"
-                                                       VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="间隔" Width="70">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding IntervalText}" FontSize="13"
-                                                   Foreground="{StaticResource TextSecondary}"
-                                                   VerticalAlignment="Center"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="操作" Width="140">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Content="编辑" Style="{StaticResource GhostButton}"
-                                                    Click="OnEditClick" Tag="{Binding}"/>
-                                            <Button Content="删除" Style="{StaticResource DangerButton}"
-                                                    Click="OnDeleteClick" Tag="{Binding}" Margin="6,0,0,0"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="+ 添加" Style="{StaticResource PrimaryButton}"
+                            Height="34" MinWidth="80" Click="OnAddClick" Margin="0,0,10,0"/>
+                    <Button Content="⚙" Style="{StaticResource GhostButton}"
+                            Height="34" Width="34" FontSize="16"
+                            Click="OnSettingsClick" ToolTip="设置"/>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Status bar -->
-        <Border Grid.Row="1" Background="{StaticResource BgColor}"
-                Padding="20,10" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-                <CheckBox x:Name="StartupCheck" Content="开机自启"
-                          Checked="OnStartupChanged" Unchecked="OnStartupChanged"
-                          Margin="0,0,20,0"/>
-                <CheckBox x:Name="TrayCloseCheck" Content="关闭到托盘"
-                          Checked="OnTrayCloseChanged" Unchecked="OnTrayCloseChanged"
-                          Margin="0,0,20,0"/>
-                <TextBlock x:Name="StatusLabel" Text=""
-                           Foreground="{StaticResource TextSecondary}" FontSize="12"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
+        <!-- Program list -->
+        <Border Grid.Row="1" Background="{StaticResource BgSecondary}"
+                Padding="20,12">
+            <ListView x:Name="ProgramListView">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="程序名" Width="130">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" FontSize="13"
+                                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="状态" Width="110">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Margin="0,0,6,0"
+                                                 Fill="{Binding StatusColor}"/>
+                                        <TextBlock Text="{Binding StatusText}" FontSize="12"
+                                                   Foreground="{Binding StatusColor}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="间隔" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding IntervalText}" FontSize="13"
+                                               Foreground="{StaticResource TextSecondary}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="操作" Width="140">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="编辑" Style="{StaticResource GhostButton}"
+                                                Click="OnEditClick" Tag="{Binding}"/>
+                                        <Button Content="删除" Style="{StaticResource DangerButton}"
+                                                Click="OnDeleteClick" Tag="{Binding}" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
         </Border>
 
-        <!-- Empty state or tip -->
-        <Border Grid.Row="2" Padding="20,8" Visibility="Collapsed">
-            <TextBlock Text="点击「+ 添加」开始监控第一个程序"
+        <!-- Status bar -->
+        <Border Grid.Row="2" Background="{StaticResource BgSecondary}"
+                BorderBrush="{StaticResource BorderColor}" BorderThickness="0,1,0,0"
+                Padding="20,10">
+            <TextBlock x:Name="StatusLabel" Text=""
                        Foreground="{StaticResource TextSecondary}" FontSize="12"
-                       HorizontalAlignment="Center"/>
+                       TextTrimming="CharacterEllipsis"/>
         </Border>
     </Grid>
 </Window>

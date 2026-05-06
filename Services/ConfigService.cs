@@ -21,14 +21,14 @@ namespace AutoSaver.Services
         public static string IniPath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "autosaver.ini");
 
-        private static string Read(string section, string key, string defaultValue = "")
+        internal static string Read(string section, string key, string defaultValue = "")
         {
             var sb = new StringBuilder(512);
             GetPrivateProfileString(section, key, defaultValue, sb, sb.Capacity, IniPath);
             return sb.ToString();
         }
 
-        private static void Write(string section, string key, string value)
+        internal static void Write(string section, string key, string value)
         {
             WritePrivateProfileString(section, key, value, IniPath);
         }

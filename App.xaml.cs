@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
 using AutoSaver.Models;
@@ -19,11 +20,18 @@ namespace AutoSaver
         private List<ProgramItem> _programs;
         private MainWindow _mainWindow;
         private string _logPath;
+        private string _iconTempPath;
 
         private void OnStartup(object sender, StartupEventArgs e)
         {
+            // Theme must be first - applies to all windows
+            ThemeService.InitTheme(this);
+
             _logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "autosaver.log");
             Log("AutoSaver starting");
+
+            // Extract embedded icon to temp file for NotifyIcon
+            ExtractIcon();
 
             _programs = ConfigService.LoadPrograms();
 
@@ -42,6 +50,30 @@ namespace AutoSaver
             SetupTray();
         }
 
+        private void ExtractIcon()
+        {
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream("AutoSaver.Resources.app-icon.png"))
+                {
+                    if (stream != null)
+                    {
+                        _iconTempPath = Path.Combine(Path.GetTempPath(), "autosaver_icon.png");
+                        using (var fs = new FileStream(_iconTempPath, FileMode.Create, FileAccess.Write))
+                        {
+                            stream.CopyTo(fs);
+                        }
+                        Log("Icon extracted to: " + _iconTempPath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("Icon extraction failed: " + ex.Message);
+            }
+        }
+
         private void SetupTray()
         {
             _tray = new NotifyIcon
@@ -50,9 +82,12 @@ namespace AutoSaver
                 Visible = true
             };
 
-            var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "generated-image-2.png");
-            if (File.Exists(iconPath))
-                _tray.Icon = Icon.FromHandle(new Bitmap(iconPath).GetHicon());
+            // Use extracted icon, fallback to exe-side file, then system default
+            if (!string.IsNullOrEmpty(_iconTempPath) && File.Exists(_iconTempPath))
+                _tray.Icon = Icon.FromHandle(new Bitmap(_iconTempPath).GetHicon());
+            else if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "generated-image-2.png")))
+                _tray.Icon = Icon.FromHandle(new Bitmap(
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "generated-image-2.png")).GetHicon());
             else
                 _tray.Icon = SystemIcons.Application;
 
@@ -77,6 +112,8 @@ namespace AutoSaver
                 menu.Items.Add(new ToolStripSeparator());
 
             menu.Items.Add(new ToolStripMenuItem("显示主窗口", null, (s, e) => ShowMainWindow()));
+            menu.Items.Add(new ToolStripMenuItem("设置", null, (s, e) => ShowSettings()));
+            menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("退出", null, (s, e) => QuitApp()));
         }
 
@@ -97,29 +134,36 @@ namespace AutoSaver
             _mainWindow.ProgramEdited += OnProgramEdited;
             _mainWindow.ProgramDeleted += OnProgramDeleted;
 
-            _mainWindow.Closed += (s, e) =>
-            {
-                _mainWindow = null;
-            };
+            _mainWindow.Closed += (s, e) => { _mainWindow = null; };
 
             _mainWindow.Show();
         }
 
+        private void ShowSettings()
+        {
+            var dlg = new SettingsDialog();
+            dlg.Owner = _mainWindow; // may be null, that's fine
+            if (dlg.ShowDialog() == true)
+            {
+                // Theme already applied by SettingsDialog
+                // Update monitor interval
+                _monitor.Stop();
+                _monitor.Start(ConfigService.CheckIntervalSec);
+                Log("Settings updated");
+            }
+        }
+
         private void OnStatusChanged(ProgramItem prog, bool running)
         {
-            // DispatcherTimer callback — already on UI thread
             Dispatcher.Invoke(() =>
             {
                 _mainWindow?.UpdateProgramStatus(prog.Id, running);
                 _scheduler.SetRunning(prog.Id, running);
-                Log($"Status: {prog.Name} {(running ? "running" : "stopped")}");
             });
         }
 
         private void OnSaveDone(string programId, string timestamp, int windowCount)
         {
-            // System.Timers.Timer callback — on ThreadPool thread
-            // MUST use Dispatcher.Invoke for UI updates
             Dispatcher.Invoke(() =>
             {
                 _mainWindow?.UpdateLastSave(programId, timestamp, windowCount);
@@ -161,6 +205,11 @@ namespace AutoSaver
             _monitor.Stop();
             _tray.Visible = false;
             _tray.Dispose();
+
+            // Clean up temp icon
+            try { if (_iconTempPath != null) File.Delete(_iconTempPath); }
+            catch { }
+
             Shutdown();
         }
 
@@ -169,6 +218,8 @@ namespace AutoSaver
             _scheduler?.StopAll();
             _monitor?.Stop();
             _tray?.Dispose();
+            try { if (_iconTempPath != null) File.Delete(_iconTempPath); }
+            catch { }
             base.OnExit(e);
         }
 

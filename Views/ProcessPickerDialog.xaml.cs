@@ -29,15 +29,20 @@ namespace AutoSaver.Views
         {
             InitializeComponent();
 
-            // Set placeholder text
+            // Set placeholder text with theme-aware colors
             SearchBox.Text = "搜索进程名...";
-            SearchBox.Foreground = System.Windows.Media.Brushes.Gray;
+            var mutedBrush = TryFindResource("TextMuted") as System.Windows.Media.Brush
+                ?? System.Windows.Media.Brushes.Gray;
+            var primaryBrush = TryFindResource("TextPrimary") as System.Windows.Media.Brush
+                ?? System.Windows.Media.Brushes.Black;
+
+            SearchBox.Foreground = mutedBrush;
             SearchBox.GotFocus += (s, e) =>
             {
                 if (SearchBox.Text == "搜索进程名...")
                 {
                     SearchBox.Text = "";
-                    SearchBox.Foreground = System.Windows.Media.Brushes.White;
+                    SearchBox.Foreground = primaryBrush;
                 }
             };
             SearchBox.LostFocus += (s, e) =>
@@ -45,7 +50,7 @@ namespace AutoSaver.Views
                 if (string.IsNullOrWhiteSpace(SearchBox.Text))
                 {
                     SearchBox.Text = "搜索进程名...";
-                    SearchBox.Foreground = System.Windows.Media.Brushes.Gray;
+                    SearchBox.Foreground = mutedBrush;
                 }
             };
 

@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Media;
 using AutoSaver.Models;
 using AutoSaver.Services;
-using Microsoft.Win32;
 
 namespace AutoSaver.Views
 {
@@ -14,8 +13,8 @@ namespace AutoSaver.Views
         private List<ProgramItem> _programs;
         private readonly Dictionary<string, string> _statuses = new Dictionary<string, string>();
         private readonly Dictionary<string, Tuple<string, int>> _lastSaves = new Dictionary<string, Tuple<string, int>>();
-        private static readonly SolidColorBrush SuccessBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80));
-        private static readonly SolidColorBrush MutedBrush = new SolidColorBrush(Color.FromRgb(0x94, 0x94, 0xB0));
+        private static readonly SolidColorBrush SuccessBrush = new SolidColorBrush(Color.FromRgb(0x34, 0xD3, 0x99));
+        private static readonly SolidColorBrush MutedBrush = new SolidColorBrush(Color.FromRgb(0x8E, 0x8E, 0x98));
 
         public event Action<ProgramItem> ProgramAdded;
         public event Action<ProgramItem> ProgramEdited;
@@ -25,8 +24,6 @@ namespace AutoSaver.Views
         {
             InitializeComponent();
             _programs = programs;
-            StartupCheck.IsChecked = ConfigService.StartWithWindows;
-            TrayCloseCheck.IsChecked = ConfigService.MinimizeToTrayOnClose;
             RefreshList();
         }
 
@@ -126,31 +123,11 @@ namespace AutoSaver.Views
             ProgramDeleted?.Invoke(display.Id);
         }
 
-        private void OnStartupChanged(object sender, RoutedEventArgs e)
+        private void OnSettingsClick(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                var enabled = StartupCheck.IsChecked == true;
-                using (var key = Registry.CurrentUser.OpenSubKey(
-                    @"Software\Microsoft\Windows\CurrentVersion\Run", true))
-                {
-                    if (enabled)
-                        key?.SetValue("AutoSaver", System.Reflection.Assembly.GetEntryAssembly().Location);
-                    else
-                        key?.DeleteValue("AutoSaver", false);
-                }
-                ConfigService.StartWithWindows = enabled;
-            }
-            catch
-            {
-                StartupCheck.IsChecked = !StartupCheck.IsChecked;
-                MessageBox.Show("注册表写入失败，请以管理员身份运行。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void OnTrayCloseChanged(object sender, RoutedEventArgs e)
-        {
-            ConfigService.MinimizeToTrayOnClose = TrayCloseCheck.IsChecked == true;
+            var dlg = new SettingsDialog();
+            dlg.Owner = this;
+            dlg.ShowDialog();
         }
     }
 }
