@@ -34,5 +34,9 @@ desktop.ini
 
 # Dev tool configs (local only)
 CLAUDE.md
+.claude.local.md
 .codebuddy/
+
+# Local docs / planning (not for distribution)
+docs/
 
