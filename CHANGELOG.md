@@ -5,6 +5,26 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-05-06
+
+### Changed
+- **Compact vertical layout** — main window reduced to 300×480, child dialogs proportionally shrunk.
+- Per-program save interval removed; all programs now share a single global interval.
+- Settings dialog redesigned with card-based sections.
+- Theme toggle buttons (dark / light / system) in settings.
+
+### Added
+- **Process picker** — add programs by selecting from currently running windowed apps with icons.
+- Default `autosaver.ini` embedded and extracted on first run if missing.
+- Inline enable/disable toggle button per program card.
+- SVG icon buttons on the main toolbar.
+
+### Fixed
+- ComboBox background now matches the active theme.
+- Scrollbar style updated for consistency.
+- Modal dialogs (AddEdit, ProcessPicker) now use `ShowDialog()` correctly.
+- Build failure caused by unescaped double quotes in interpolated string.
+
 ## [1.3.3] - 2026-05-06
 
 ### Fixed
