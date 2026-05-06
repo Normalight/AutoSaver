@@ -292,9 +292,20 @@ namespace AutoSaver.Views
 
         private void AddProgram(string name, string exe)
         {
-            if (_programs.Any(p => p.Exe.Equals(exe, StringComparison.OrdinalIgnoreCase)))
+            var key = ProgramItem.NormalizeExeKey(exe);
+            if (string.IsNullOrEmpty(key))
             {
-                MessageBox.Show($"\"{exe}\" 已在列表中。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("无法识别该可执行文件名。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (_programs.Any(p => ProgramItem.NormalizeExeKey(p.Exe) == key))
+            {
+                MessageBox.Show(
+                    $"同一程序只能添加一次（已存在相同 exe：{key}）。\n该条目会监控该进程下所有可见顶层窗口。",
+                    "提示",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
                 return;
             }
 

@@ -68,6 +68,12 @@ namespace AutoSaver.Views
                 return;
             }
 
+            if (string.IsNullOrEmpty(ProgramItem.NormalizeExeKey(exe)))
+            {
+                MessageBox.Show("无法识别该可执行文件名。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             Result = _existing ?? new ProgramItem();
             Result.Name = name.Length > 0 ? name : System.IO.Path.GetFileNameWithoutExtension(exe);
             Result.Exe = exe;

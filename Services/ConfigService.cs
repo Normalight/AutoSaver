@@ -127,7 +127,30 @@ namespace AutoSaver.Services
                     SaveIntervalSec = int.TryParse(Read($"program.{i}", "save_interval_sec", "300"), out var iv) ? iv : 300
                 });
             }
-            return programs;
+
+            var deduped = DeduplicateProgramsByExe(programs);
+            if (deduped.Count != programs.Count)
+                SavePrograms(deduped);
+
+            return deduped;
+        }
+
+        /// <summary>同一 exe 只保留一条（按配置顺序先出现的为准），用于合并历史重复项。</summary>
+        private static List<ProgramItem> DeduplicateProgramsByExe(List<ProgramItem> programs)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var list = new List<ProgramItem>();
+            foreach (var p in programs)
+            {
+                var key = ProgramItem.NormalizeExeKey(p.Exe);
+                if (string.IsNullOrEmpty(key))
+                    continue;
+                if (!seen.Add(key))
+                    continue;
+                list.Add(p);
+            }
+
+            return list;
         }
 
         public static void SavePrograms(List<ProgramItem> programs)
