@@ -76,6 +76,9 @@ namespace AutoSaver
             foreach (var prog in _programs)
                 _scheduler.AddProgram(prog);
 
+            _scheduler.SetInterval(ConfigService.CheckIntervalSec);
+            _scheduler.Start();
+
             _monitor.RefreshPrograms(_programs);
             _monitor.Start(ConfigService.CheckIntervalSec);
 
@@ -200,8 +203,7 @@ namespace AutoSaver
             dlg.Owner = _mainWindow; // may be null, that's fine
             if (dlg.ShowDialog() == true)
             {
-                // Theme already applied by SettingsDialog
-                // Update monitor interval
+                _scheduler.SetInterval(ConfigService.CheckIntervalSec);
                 _monitor.Stop();
                 _monitor.Start(ConfigService.CheckIntervalSec);
                 Log("Settings updated");

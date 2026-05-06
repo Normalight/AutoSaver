@@ -1,11 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using AutoSaver.Models;
 using AutoSaver.Services;
 using Microsoft.Win32;
@@ -14,6 +20,17 @@ namespace AutoSaver.Views
 {
     public partial class MainWindow : Window
     {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool CloseHandle(IntPtr hObject);
+
+        private const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
         private List<ProgramItem> _programs;
         private readonly Dictionary<string, string> _statuses = new Dictionary<string, string>();
         private readonly Dictionary<string, Tuple<string, int>> _lastSaves = new Dictionary<string, Tuple<string, int>>();
@@ -46,6 +63,7 @@ namespace AutoSaver.Views
                     ExeSummary = CreateExeSummary(p.Exe),
                     StatusColor = isRunning ? SuccessBrush : MutedBrush,
                     Enabled = p.Enabled,
+                    Icon = GetProgramIcon(p.Exe)
                 };
             }).ToList();
 
@@ -91,6 +109,58 @@ namespace AutoSaver.Views
             if (string.IsNullOrWhiteSpace(exe)) return "未配置路径";
             var fileName = Path.GetFileName(exe);
             return string.IsNullOrEmpty(fileName) ? exe : fileName;
+        }
+
+        private static ImageSource GetProgramIcon(string exe)
+        {
+            try
+            {
+                var path = GetExePath(exe);
+                if (string.IsNullOrEmpty(path)) return null;
+                var icon = Icon.ExtractAssociatedIcon(path);
+                if (icon == null) return null;
+                return Imaging.CreateBitmapSourceFromHIcon(
+                    icon.Handle,
+                    Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+            }
+            catch { return null; }
+        }
+
+        private static string GetExePath(string exeName)
+        {
+            var name = exeName;
+            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                name = name.Substring(0, name.Length - 4);
+
+            foreach (var proc in Process.GetProcessesByName(name))
+            {
+                try
+                {
+                    var path = proc.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(path)) return path;
+                }
+                catch
+                {
+                    try
+                    {
+                        var hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, proc.Id);
+                        if (hProcess != IntPtr.Zero)
+                        {
+                            var sb = new StringBuilder(1024);
+                            var size = sb.Capacity;
+                            if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
+                            {
+                                CloseHandle(hProcess);
+                                return sb.ToString();
+                            }
+                            CloseHandle(hProcess);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            return null;
         }
 
         private void OnAddClick(object sender, RoutedEventArgs e)
@@ -154,10 +224,8 @@ namespace AutoSaver.Views
                 SaveIntervalSec = ConfigService.CheckIntervalSec
             };
 
-            _programs.Add(prog);
-            ConfigService.SavePrograms(_programs);
-            RefreshList();
             ProgramAdded?.Invoke(prog);
+            RefreshList();
         }
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)

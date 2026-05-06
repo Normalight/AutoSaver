@@ -261,6 +261,7 @@
                                                               VerticalAlignment="Center"
                                                               HorizontalAlignment="Left"
                                                               RecognizesAccessKey="True"
+                                                              TextBlock.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                                                               Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                                                               ContentStringFormat="{Binding SelectionBoxItemStringFormat, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
                                             <Path Grid.Column="1" Data="M 0 0 L 4 4 L 8 0 Z"
@@ -322,7 +323,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
                     <Border x:Name="itemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter VerticalAlignment="Center"/>
+                        <ContentPresenter VerticalAlignment="Center" TextBlock.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
@@ -358,10 +359,24 @@
         <Setter Property="Margin" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <ContentPresenter/>
+                    <Border x:Name="itemBorder"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            Margin="{TemplateBinding Margin}">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="itemBorder" Property="Background" Value="{DynamicResource ControlHoverBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="itemBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

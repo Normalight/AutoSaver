@@ -83,8 +83,11 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal">
+                                                <Image Source="{Binding Icon}" Width="20" Height="20"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
                                                 <Ellipse Width="6" Height="6" Fill="{Binding StatusColor}"
-                                                         VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                         VerticalAlignment="Center" Margin="0,0,5,0"/>
                                                 <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
                                                            Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis"/>

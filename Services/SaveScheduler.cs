@@ -21,27 +21,50 @@ namespace AutoSaver.Services
 
     public class SaveScheduler
     {
-        private readonly Dictionary<string, TimerInfo> _timers = new Dictionary<string, TimerInfo>();
+        private readonly List<ProgramState> _programs = new List<ProgramState>();
         private readonly object _lock = new object();
+        private Timer _timer;
+        private int _intervalSec = 30;
 
         public event Action<string, string, int> SaveDone;
         public event Action<SaveResult> SaveCompleted;
 
-        private class TimerInfo
+        private class ProgramState
         {
             public ProgramItem Program;
-            public Timer Timer;
+            public bool Running;
+        }
+
+        public void Start()
+        {
+            lock (_lock)
+            {
+                StopInternal();
+                _timer = new Timer(_intervalSec * 1000);
+                _timer.AutoReset = true;
+                _timer.Elapsed += OnTimerTick;
+                _timer.Start();
+            }
+        }
+
+        public void SetInterval(int seconds)
+        {
+            _intervalSec = seconds;
+            lock (_lock)
+            {
+                if (_timer != null)
+                {
+                    _timer.Interval = seconds * 1000;
+                }
+            }
         }
 
         public void AddProgram(ProgramItem prog)
         {
             lock (_lock)
             {
-                if (_timers.ContainsKey(prog.Id)) return;
-                var timer = new Timer(prog.SaveIntervalSec * 1000);
-                timer.AutoReset = true;
-                timer.Elapsed += (s, e) => DoSave(prog);
-                _timers[prog.Id] = new TimerInfo { Program = prog, Timer = timer };
+                if (_programs.Any(p => p.Program.Id == prog.Id)) return;
+                _programs.Add(new ProgramState { Program = prog, Running = false });
             }
         }
 
@@ -49,12 +72,7 @@ namespace AutoSaver.Services
         {
             lock (_lock)
             {
-                if (_timers.TryGetValue(programId, out var info))
-                {
-                    info.Timer.Stop();
-                    info.Timer.Dispose();
-                    _timers.Remove(programId);
-                }
+                _programs.RemoveAll(p => p.Program.Id == programId);
             }
         }
 
@@ -62,15 +80,11 @@ namespace AutoSaver.Services
         {
             lock (_lock)
             {
-                if (_timers.TryGetValue(prog.Id, out var info))
-                {
-                    info.Program = prog;
-                    info.Timer.Interval = prog.SaveIntervalSec * 1000;
-                }
+                var idx = _programs.FindIndex(p => p.Program.Id == prog.Id);
+                if (idx >= 0)
+                    _programs[idx].Program = prog;
                 else
-                {
-                    AddProgram(prog);
-                }
+                    _programs.Add(new ProgramState { Program = prog, Running = false });
             }
         }
 
@@ -78,11 +92,9 @@ namespace AutoSaver.Services
         {
             lock (_lock)
             {
-                if (!_timers.TryGetValue(programId, out var info)) return;
-                if (running)
-                    info.Timer.Start();
-                else
-                    info.Timer.Stop();
+                var state = _programs.FirstOrDefault(p => p.Program.Id == programId);
+                if (state != null)
+                    state.Running = running;
             }
         }
 
@@ -90,12 +102,37 @@ namespace AutoSaver.Services
         {
             lock (_lock)
             {
-                foreach (var info in _timers.Values)
-                {
-                    info.Timer.Stop();
-                    info.Timer.Dispose();
-                }
-                _timers.Clear();
+                StopInternal();
+                _programs.Clear();
+            }
+        }
+
+        private void StopInternal()
+        {
+            if (_timer != null)
+            {
+                _timer.Stop();
+                _timer.Dispose();
+                _timer = null;
+            }
+        }
+
+        private void OnTimerTick(object sender, ElapsedEventArgs e)
+        {
+            // Take a snapshot of programs that need saving (enabled + running)
+            List<ProgramItem> toSave;
+            lock (_lock)
+            {
+                toSave = _programs
+                    .Where(p => p.Program.Enabled && p.Running)
+                    .Select(p => p.Program)
+                    .ToList();
+            }
+
+            // Save sequentially
+            foreach (var prog in toSave)
+            {
+                DoSave(prog);
             }
         }
 
@@ -105,11 +142,9 @@ namespace AutoSaver.Services
             {
                 var timestamp = DateTime.Now.ToString("HH:mm:ss");
 
-                // Count windows before save
                 var before = WindowService.GetWindowCountByExe(prog.Exe);
                 if (before == 0)
                 {
-                    // Not running — skip silently
                     SaveDone?.Invoke(prog.Id, timestamp, 0);
                     return;
                 }
@@ -118,15 +153,12 @@ namespace AutoSaver.Services
                 foreach (var hwnd in hwnds)
                     WindowService.SendCtrlS(hwnd);
 
-                // Brief wait for potential dialog to appear
                 System.Threading.Thread.Sleep(200);
 
-                // Count windows after save — new window = dialog popped up
                 var after = WindowService.GetWindowCountByExe(prog.Exe);
 
                 if (after > before)
                 {
-                    // New dialog appeared — needs manual save confirmation
                     SaveDone?.Invoke(prog.Id, timestamp, hwnds.Count);
                     SaveCompleted?.Invoke(new SaveResult
                     {
@@ -148,7 +180,6 @@ namespace AutoSaver.Services
                     return;
                 }
 
-                // Success — no new dialog appeared
                 SaveDone?.Invoke(prog.Id, timestamp, hwnds.Count);
                 SaveCompleted?.Invoke(new SaveResult
                 {

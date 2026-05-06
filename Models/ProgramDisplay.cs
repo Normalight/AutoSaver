@@ -10,5 +10,6 @@ namespace AutoSaver.Models
         public string ExeSummary { get; set; }
         public Brush StatusColor { get; set; }
         public bool Enabled { get; set; }
+        public ImageSource Icon { get; set; }
     }
 }

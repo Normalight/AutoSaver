@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Topmost="True"
         ShowInTaskbar="False" Height="56" Width="420"
+        WindowStartupLocation="Manual"
         Background="Transparent">
 
     <Border x:Name="RootBorder" CornerRadius="8" Padding="14,0"
