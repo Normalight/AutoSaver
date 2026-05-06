@@ -71,9 +71,9 @@
 
                     <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="检查间隔" Style="{StaticResource H2}"/>
-                            <TextBlock Text="保存监控会把这里换算为秒数，仍然使用统一的内部间隔。"
-                                       Style="{StaticResource Caption}" Margin="0,6,0,16"/>
+                            <TextBlock Text="保存间隔（默认值）" Style="{StaticResource H2}"/>
+                            <TextBlock Text="每个监控程序独立倒计时；全局秒数为默认周期（可与程序自己的间隔并存）。倒计时在后台统一递减；到 0 且不在前台时保持为 0，切回该程序时再保存并重新开始。"
+                                       Style="{StaticResource Caption}" Margin="0,6,0,16" TextWrapping="Wrap"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>

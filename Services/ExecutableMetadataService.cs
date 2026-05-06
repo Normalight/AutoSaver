@@ -55,6 +55,19 @@ namespace AutoSaver.Services
             }
         }
 
+        public static string TryGetProcessPathById(int processId)
+        {
+            try
+            {
+                using (var p = Process.GetProcessById(processId))
+                    return GetProcessPath(p);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static string GetExePath(string exeName)
         {
             var name = exeName;

@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Windows;
+using System.Windows.Forms;
 
 namespace AutoSaver.Services
 {
@@ -28,6 +32,17 @@ namespace AutoSaver.Services
 
         [DllImport("user32.dll")]
         private static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        public static IntPtr GetForegroundWindowHandle() => GetForegroundWindow();
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
 
         [DllImport("user32.dll")]
         private static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
@@ -73,6 +88,78 @@ namespace AutoSaver.Services
             }, IntPtr.Zero);
 
             return hwnds;
+        }
+
+        /// <summary>
+        /// Activate each window and send Ctrl+S via SendKeys on the UI thread (STA).
+        /// </summary>
+        public static void SendCtrlSToWindows(IReadOnlyList<IntPtr> hwnds)
+        {
+            if (hwnds == null || hwnds.Count == 0) return;
+
+            void Run()
+            {
+                foreach (var hwnd in hwnds)
+                {
+                    if (hwnd == IntPtr.Zero) continue;
+                    TryActivateAndSendCtrlS(hwnd);
+                    Thread.Sleep(100);
+                }
+            }
+
+            var app = Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+                app.Dispatcher.Invoke(Run);
+            else
+                Run();
+        }
+
+        private static void TryActivateAndSendCtrlS(IntPtr hwnd)
+        {
+            try
+            {
+                uint selfThreadId = GetCurrentThreadId();
+                IntPtr fgHwnd = GetForegroundWindow();
+                uint fgThreadId = fgHwnd != IntPtr.Zero
+                    ? GetWindowThreadProcessId(fgHwnd, out _)
+                    : selfThreadId;
+                uint targetThreadId = GetWindowThreadProcessId(hwnd, out uint targetPid);
+
+                bool linkedFg = false;
+                bool linkedTarget = false;
+                try
+                {
+                    AllowSetForegroundWindow(-1);
+
+                    if (fgThreadId != selfThreadId && fgThreadId != targetThreadId)
+                        linkedFg = AttachThreadInput(selfThreadId, fgThreadId, true);
+                    if (targetThreadId != selfThreadId)
+                        linkedTarget = AttachThreadInput(selfThreadId, targetThreadId, true);
+
+                    ShowWindow(hwnd, SW_RESTORE);
+                    AllowSetForegroundWindow((int)targetPid);
+                    SetForegroundWindow(hwnd);
+                    Thread.Sleep(120);
+                    SendKeys.SendWait("^s");
+                }
+                finally
+                {
+                    if (linkedTarget)
+                        AttachThreadInput(selfThreadId, targetThreadId, false);
+                    if (linkedFg)
+                        AttachThreadInput(selfThreadId, fgThreadId, false);
+                }
+            }
+            catch
+            {
+                try
+                {
+                    BringToFront(hwnd);
+                    Thread.Sleep(120);
+                    SendKeys.SendWait("^s");
+                }
+                catch { }
+            }
         }
 
         public static bool SendCtrlS(IntPtr hWnd)
@@ -165,6 +252,49 @@ namespace AutoSaver.Services
             }, IntPtr.Zero);
 
             return count;
+        }
+
+        public static bool TryGetForegroundProcess(out IntPtr hwnd, out int processId, out string exePath)
+        {
+            hwnd = GetForegroundWindow();
+            processId = 0;
+            exePath = null;
+            if (hwnd == IntPtr.Zero) return false;
+            GetWindowThreadProcessId(hwnd, out uint pid);
+            processId = (int)pid;
+            exePath = ExecutableMetadataService.TryGetProcessPathById(processId);
+            return !string.IsNullOrEmpty(exePath);
+        }
+
+        public static bool ExeNamesEqual(string configuredExe, string runningFileName)
+        {
+            if (string.IsNullOrWhiteSpace(configuredExe) || string.IsNullOrWhiteSpace(runningFileName))
+                return false;
+            var a = configuredExe.Trim();
+            var b = runningFileName.Trim();
+            if (!a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) a += ".exe";
+            if (!b.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) b += ".exe";
+            return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool ForegroundExeMatches(string configuredExe, string foregroundExeFileName)
+        {
+            if (string.IsNullOrEmpty(foregroundExeFileName)) return false;
+            return ExeNamesEqual(configuredExe, foregroundExeFileName);
+        }
+
+        /// <summary>
+        /// True when foreground window belongs to <paramref name="configuredExe"/>; returns its HWND.
+        /// </summary>
+        public static bool TryMatchForegroundExe(string configuredExe, out IntPtr foregroundHwnd)
+        {
+            foregroundHwnd = IntPtr.Zero;
+            if (!TryGetForegroundProcess(out var hwnd, out _, out var path)) return false;
+            var file = Path.GetFileName(path);
+            if (file.Equals("autosaver.exe", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!ExeNamesEqual(configuredExe, file)) return false;
+            foregroundHwnd = hwnd;
+            return foregroundHwnd != IntPtr.Zero;
         }
     }
 }

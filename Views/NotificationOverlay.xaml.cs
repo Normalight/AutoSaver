@@ -13,6 +13,9 @@ namespace AutoSaver.Views
         private readonly DispatcherTimer _autoHideTimer;
         private Action _onJump;
 
+        /// <summary>Raised after the toast has finished hiding.</summary>
+        public event Action Hidden;
+
         public NotificationOverlay()
         {
             InitializeComponent();
@@ -33,7 +36,7 @@ namespace AutoSaver.Views
             {
                 case NotificationType.Success:
                     StatusBar.Background = ThemeBrush("SuccessColor", 0x34, 0xD3, 0x99);
-                    TitleText.Text = $"✓ {programName} 已保存";
+                    TitleText.Text = $"✓ {programName}";
                     TitleText.Foreground = ThemeBrush("SuccessColor", 0x34, 0xD3, 0x99);
                     JumpButton.Visibility = Visibility.Collapsed;
                     CloseButton.Visibility = Visibility.Collapsed;
@@ -91,7 +94,12 @@ namespace AutoSaver.Views
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
-            anim.Completed += (s, e) => { Hide(); _onJump = null; };
+            anim.Completed += (s, e) =>
+            {
+                Hide();
+                _onJump = null;
+                Hidden?.Invoke();
+            };
             BeginAnimation(TopProperty, anim);
         }
 

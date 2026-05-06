@@ -6,6 +6,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
+using System.Windows.Threading;
 using AutoSaver.Models;
 using AutoSaver.Services;
 using AutoSaver.Views;
@@ -26,6 +27,8 @@ namespace AutoSaver
         private List<ProgramItem> _programs;
         private MainWindow _mainWindow;
         private NotificationOverlay _notification;
+        private readonly Queue<SaveResult> _notificationQueue = new Queue<SaveResult>();
+        private bool _notificationShowing;
         private string _logPath;
         private string _iconTempPath;
         private UpdateCheckResult _lastUpdateCheckResult;
@@ -78,7 +81,8 @@ namespace AutoSaver
             _scheduler = new SaveScheduler();
             _scheduler.SaveDone += OnSaveDone;
             _scheduler.SaveCompleted += OnSaveCompleted;
-            _scheduler.IntervalTicked += OnIntervalTicked;
+            _scheduler.FocusCountdown += OnFocusCountdown;
+            _scheduler.ProgramListTick += OnProgramListTick;
 
             foreach (var prog in _programs)
                 _scheduler.AddProgram(prog);
@@ -206,7 +210,10 @@ namespace AutoSaver
         private void ShowNotification(SaveResult result)
         {
             if (_notification == null)
+            {
                 _notification = new NotificationOverlay();
+                _notification.Hidden += OnNotificationHidden;
+            }
 
             var type = result.Status switch
             {
@@ -216,7 +223,28 @@ namespace AutoSaver
                 _ => NotificationType.Success
             };
 
+            _notificationShowing = true;
             _notification.Show(result.Program.Name, result.Message, type, result.JumpAction);
+        }
+
+        private void OnNotificationHidden()
+        {
+            _notificationShowing = false;
+            TryShowNextNotification();
+        }
+
+        private void TryShowNextNotification()
+        {
+            if (_notificationShowing) return;
+            if (_notificationQueue.Count == 0) return;
+
+            ShowNotification(_notificationQueue.Dequeue());
+        }
+
+        private void EnqueueNotification(SaveResult result)
+        {
+            _notificationQueue.Enqueue(result);
+            TryShowNextNotification();
         }
 
         private void ShowSettings()
@@ -405,12 +433,25 @@ namespace AutoSaver
         private void OnSaveCompleted(SaveResult result)
         {
             if (!ConfigService.ShowNotifications) return;
-            Dispatcher.Invoke(() => ShowNotification(result));
+            Dispatcher.Invoke(() => EnqueueNotification(result));
         }
 
-        private void OnIntervalTicked(int intervalSec)
+        private void OnFocusCountdown(FocusCountdownSnapshot snap)
         {
-            Dispatcher.Invoke(() => _mainWindow?.SetNextSaveTime(intervalSec));
+            void Apply() => _mainWindow?.UpdateFocusCountdown(snap);
+            if (Dispatcher.CheckAccess())
+                Apply();
+            else
+                Dispatcher.BeginInvoke((Action)Apply, DispatcherPriority.Normal);
+        }
+
+        private void OnProgramListTick(IReadOnlyList<WindowCountdownRow> rows)
+        {
+            void Apply() => _mainWindow?.ApplyProgramCountdowns(rows);
+            if (Dispatcher.CheckAccess())
+                Apply();
+            else
+                Dispatcher.BeginInvoke((Action)Apply, DispatcherPriority.Normal);
         }
 
         private void OnProgramAdded(ProgramItem prog)
