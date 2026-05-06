@@ -5,6 +5,23 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-06
+
+### Added
+- About dialog with version info, update check, and release notes viewer.
+- UpdateService — checks GitHub Releases for new versions and downloads the installer.
+- Inno Setup installer with auto-built `autosaver-setup.exe`.
+- Portal portable zip artifact for no-install deployment.
+- ExecutableMetadataService for reading file version and icon from .exe files.
+
+### Changed
+- CI workflow now resolves Inno Setup path from both `Program Files` and `Program Files (x86)`.
+- `.claude/` directory added to `.gitignore`.
+
+### Fixed
+- About dialog chrome now has rounded corners consistent with the rest of the app.
+- Installer asset name centralized in CI workflow to avoid mismatches.
+
 ## [1.3.7] - 2026-05-07
 
 ### Fixed
