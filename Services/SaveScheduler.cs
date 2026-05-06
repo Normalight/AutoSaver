@@ -28,6 +28,7 @@ namespace AutoSaver.Services
 
         public event Action<string, string, int> SaveDone;
         public event Action<SaveResult> SaveCompleted;
+        public event Action<int> IntervalTicked;
 
         private class ProgramState
         {
@@ -119,6 +120,7 @@ namespace AutoSaver.Services
 
         private void OnTimerTick(object sender, ElapsedEventArgs e)
         {
+            IntervalTicked?.Invoke(_intervalSec);
             // Take a snapshot of programs that need saving (enabled + running)
             List<ProgramItem> toSave;
             lock (_lock)
