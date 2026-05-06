@@ -313,7 +313,7 @@ namespace AutoSaver.Services
             raw = TrimEnvQuotes(raw);
             if (string.IsNullOrWhiteSpace(raw)) return null;
 
-            if (!raw.Contains("://", StringComparison.Ordinal))
+            if (raw.IndexOf("://", StringComparison.Ordinal) < 0)
                 raw = "http://" + raw.Trim();
 
             try
