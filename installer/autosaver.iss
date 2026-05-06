@@ -34,10 +34,6 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\app-icon.ico
 
-[Tasks]
-Name: "launchnow"; Description: "安装完成后立即启动 {#MyAppName}"; GroupDescription: "附加选项"; Flags: checkedonce
-Name: "quicklaunch"; Description: "将快捷方式添加到「快速启动」栏"; GroupDescription: "附加选项"; Flags: checkedonce
-
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
@@ -49,10 +45,11 @@ Source: "..\bin\Release\VERSION"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app-icon.ico"
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app-icon.ico"; Tasks: quicklaunch
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent; Tasks: launchnow
+; postinstall：选项仅出现在最后的「安装完成」界面（符合常见安装向导习惯），默认勾选（不显式 unchecked）
+Filename: "{app}\{#MyAppExeName}"; Description: "安装完成后立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$ql = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch'; New-Item -ItemType Directory -Force -Path $ql | Out-Null; $w = New-Object -ComObject WScript.Shell; $s = $w.CreateShortcut((Join-Path $ql '{#MyAppName}.lnk')); $s.TargetPath = '{app}\{#MyAppExeName}'; $s.WorkingDirectory = '{app}'; $s.IconLocation = '{app}\app-icon.ico'; $s.Save()"""; Description: "将快捷方式添加到「快速启动」栏"; Flags: postinstall skipifsilent runhidden
 
 [UninstallRun]
 ; taskkill 返回码非 0（进程不存在）时仍需卸载继续，故由 cmd 吞掉错误
