@@ -26,6 +26,7 @@ namespace AutoSaver
         private string _iconTempPath;
 
         public static string Version { get; private set; } = "1.0.0";
+        public static string CurrentReleaseNotes { get; private set; } = "";
 
         private void OnStartup(object sender, StartupEventArgs e)
         {
@@ -38,11 +39,15 @@ namespace AutoSaver
             }
             catch { }
 
+            var changelogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md");
+            CurrentReleaseNotes = ChangelogService.GetReleaseNotes(changelogPath, Version);
+
             // Theme must be first - applies to all windows
             ThemeService.InitTheme(this);
 
             _logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "autosaver.log");
             Log($"AutoSaver v{Version} starting");
+            Log($"Release notes loaded for v{Version}: {CurrentReleaseNotes.Length} characters");
 
             // Extract embedded icon to temp file for NotifyIcon
             ExtractIcon();
@@ -137,6 +142,7 @@ namespace AutoSaver
             if (_mainWindow != null)
             {
                 _mainWindow.Activate();
+                _mainWindow.WindowState = WindowState.Normal;
                 return;
             }
 

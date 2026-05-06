@@ -53,6 +53,7 @@
     <Compile Include="Models\ProgramItem.cs" />
     <Compile Include="Models\ProgramDisplay.cs" />
     <Compile Include="Services\ConfigService.cs" />
+    <Compile Include="Services\ChangelogService.cs" />
     <Compile Include="Services\WindowService.cs" />
     <Compile Include="Services\ProcessMonitor.cs" />
     <Compile Include="Services\SaveScheduler.cs" />
@@ -110,6 +111,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="VERSION">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CHANGELOG.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
