@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.11] - 2026-05-07
+
+### Changed
+- **检查更新**：已 **完全移除对 `api.github.com` REST API 的调用**（避免限流与访问策略）。仅通过 **`https://github.com/Normalight/AutoSaver/releases/latest`** 重定向解析 **`/releases/tag/{tag}`** 与 **`releases/download/{tag}/AutoSaver-{semver}-Setup.exe`**；发行说明仍以本地 `CHANGELOG.md` / App 内 fallback 为准。
+
 ## [1.5.10] - 2026-05-07
 
 ### Fixed

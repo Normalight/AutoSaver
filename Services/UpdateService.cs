@@ -9,20 +9,18 @@ using AutoSaver.Models;
 namespace AutoSaver.Services
 {
     /// <summary>
-    /// Checks GitHub Releases for a newer version of AutoSaver.
-    /// All public methods are fire-and-forget safe: network errors are caught and
-    /// returned as UpdateCheckResult.ErrorMessage rather than thrown to callers.
+    /// 通过 GitHub 网页「最新发行版」重定向解析版本号与安装包直链（不使用 api.github.com REST，避免 API 限流与访问限制）。
+    /// 网络错误写入 <see cref="UpdateCheckResult.ErrorMessage"/>，不向调用方抛异常。
     /// </summary>
     /// <remarks>
-    /// Proxy resolution order: <c>NO_PROXY</c> host match → direct;
-    /// then <c>HTTPS_PROXY</c>/<c>HTTP_PROXY</c>/<c>ALL_PROXY</c> (typical for Clash when not using Windows system proxy);
-    /// then <see cref="WebRequest.GetSystemWebProxy"/> (Clash「系统代理」、企业 PAC)。
-    /// 仅支持 HTTP/HTTPS 代理；纯 SOCKS 端口请使用 Clash 的 mixed / HTTP 入站。
+    /// 代理：<c>NO_PROXY</c> → 直连；<c>HTTPS_PROXY</c>/<c>HTTP_PROXY</c>/<c>ALL_PROXY</c>；
+    /// 再回退 <see cref="WebRequest.GetSystemWebProxy"/>。仅 HTTP/HTTPS 代理。
     /// </remarks>
     public static class UpdateService
     {
-        private const string ApiUrl =
-            "https://api.github.com/repos/Normalight/AutoSaver/releases/latest";
+        /// <summary>浏览器访问「最新 release」时的入口 URL（会 302 到带 tag 的页面）。</summary>
+        private const string LatestReleasePageUrl =
+            "https://github.com/Normalight/AutoSaver/releases/latest";
 
         /// <summary>
         /// Format string for the installer asset uploaded by CI/Inno (with extension).
@@ -41,7 +39,6 @@ namespace AutoSaver.Services
             return string.Format(InstallerAssetFileNameFormat, semanticVersion);
         }
 
-        // GitHub API requires a User-Agent header.
         private static string UserAgent =>
             $"AutoSaver/{App.Version} (update-check)";
 
@@ -49,20 +46,13 @@ namespace AutoSaver.Services
         {
             try
             {
-                // GitHub 要求 TLS 1.2+；部分环境默认仍启用 SSL3 / TLS1.0 会导致握手失败。
-                // 不显式引用 Tls13：部分 CI 参考程序集未包含该枚举会导致 CS0117。
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             }
             catch { }
         }
 
-        // ------------------------------------------------------------------ //
-        //  Public API                                                          //
-        // ------------------------------------------------------------------ //
-
         /// <summary>
-        /// Asynchronously checks GitHub for the latest release.
-        /// Never throws — all errors are captured in UpdateCheckResult.ErrorMessage.
+        /// Asynchronously checks GitHub for the latest release (via releases/latest redirect only).
         /// </summary>
         public static Task<UpdateCheckResult> CheckAsync()
         {
@@ -76,47 +66,38 @@ namespace AutoSaver.Services
         {
             var current = App.Version;
             var result = new UpdateCheckResult { CurrentVersion = current };
-            Exception apiException = null;
 
             try
             {
-                var json = FetchJson(ApiUrl);
-                ParseRelease(json, result);
-            }
-            catch (Exception ex)
-            {
-                apiException = ex;
-            }
-
-            // API 失败或解析不到版本时：许多网络环境屏蔽 api.github.com 但不屏蔽 github.com，用 releases/latest 重定向解析版本。
-            if (string.IsNullOrEmpty(result.LatestVersion))
-            {
                 if (!TryPopulateLatestFromGitHubReleasePage(result))
                 {
-                    result.ErrorMessage = apiException != null
-                        ? FormatUserFacingError(apiException)
-                        : "无法从 GitHub 获取最新版本（请检查网络或代理）。";
+                    result.ErrorMessage = "无法打开 GitHub 发行页或解析版本（请检查网络、代理或防火墙）。";
                     result.HasUpdate = false;
                     return result;
                 }
+
+                if (!string.IsNullOrEmpty(result.LatestVersion))
+                    result.HasUpdate = IsNewer(result.LatestVersion, current);
+
+                result.ErrorMessage = "";
+            }
+            catch (Exception ex)
+            {
+                result.ErrorMessage = FormatUserFacingError(ex);
+                result.HasUpdate = false;
             }
 
-            if (!string.IsNullOrEmpty(result.LatestVersion))
-                result.HasUpdate = IsNewer(result.LatestVersion, current);
-
-            result.ErrorMessage = "";
             return result;
         }
 
         /// <summary>
-        /// GET https://github.com/.../releases/latest ，跟随重定向，从最终 URL 的 /releases/tag/{tag} 解析版本并构造安装包直链。
+        /// GET <see cref="LatestReleasePageUrl"/>，跟随重定向，从最终 URL 的 /releases/tag/{tag} 解析版本并构造安装包直链。
         /// </summary>
         private static bool TryPopulateLatestFromGitHubReleasePage(UpdateCheckResult result)
         {
-            const string pageUrl = "https://github.com/Normalight/AutoSaver/releases/latest";
             try
             {
-                var uri = new Uri(pageUrl, UriKind.Absolute);
+                var uri = new Uri(LatestReleasePageUrl, UriKind.Absolute);
                 var req = (HttpWebRequest)WebRequest.Create(uri);
                 req.Method = "GET";
                 req.UserAgent = UserAgent;
@@ -171,6 +152,8 @@ namespace AutoSaver.Services
             var tag = path.Substring(idx + marker.Length).Trim('/');
             if (string.IsNullOrEmpty(tag))
                 return false;
+
+            tag = Uri.UnescapeDataString(tag);
 
             var semVer = tag.TrimStart('v');
             result.LatestVersion = semVer;
@@ -273,57 +256,6 @@ namespace AutoSaver.Services
             });
         }
 
-        // ------------------------------------------------------------------ //
-        //  Internals                                                           //
-        // ------------------------------------------------------------------ //
-
-        private static string FetchJson(string url)
-        {
-            var uri = new Uri(url, UriKind.Absolute);
-            var req = (HttpWebRequest)WebRequest.Create(uri);
-            req.Method = "GET";
-            req.UserAgent = UserAgent;
-            req.Accept = "application/vnd.github+json";
-            req.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
-            req.Timeout = 45_000;
-            req.ReadWriteTimeout = 45_000;
-            req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-            ConfigureProxy(req, uri);
-
-            try
-            {
-                using (var resp = (HttpWebResponse)req.GetResponse())
-                {
-                    if (resp.StatusCode != HttpStatusCode.OK)
-                    {
-                        var errBody = "";
-                        using (var es = resp.GetResponseStream())
-                        {
-                            if (es != null)
-                            {
-                                using (var sr = new StreamReader(es, Encoding.UTF8))
-                                    errBody = sr.ReadToEnd();
-                            }
-                        }
-
-                        throw new InvalidOperationException(
-                            $"GitHub API HTTP {(int)resp.StatusCode}: {errBody}");
-                    }
-
-                    using (var stream = resp.GetResponseStream())
-                    using (var reader = new StreamReader(stream, Encoding.UTF8))
-                        return reader.ReadToEnd();
-                }
-            }
-            catch (WebException ex)
-            {
-                throw new InvalidOperationException(BuildWebExceptionMessage(ex), ex);
-            }
-        }
-
-        /// <summary>
-        /// 环境变量代理优先（Clash 未开系统代理时常用），否则使用 Windows 系统代理（IE / WinHTTP）。
-        /// </summary>
         private static void ConfigureProxy(HttpWebRequest req, Uri targetUri)
         {
             req.UseDefaultCredentials = true;
@@ -468,176 +400,16 @@ namespace AutoSaver.Services
             return ex.Message;
         }
 
-        /// <summary>
-        /// Minimal hand-rolled JSON extraction — avoids any NuGet dependency.
-        /// Extracts: tag_name, html_url, body, and the installer asset browser_download_url.
-        /// </summary>
-        private static void ParseRelease(string json, UpdateCheckResult result)
-        {
-            // tag_name → strip leading "v"
-            var tag = ExtractStringValue(json, "tag_name");
-            if (!string.IsNullOrEmpty(tag))
-                result.LatestVersion = tag.TrimStart('v');
-
-            result.ReleaseUrl = ExtractStringValue(json, "html_url");
-            result.ReleaseNotes = ExtractStringValue(json, "body");
-
-            // Installer asset: look for the browser_download_url whose name matches
-            // GetExpectedInstallerAssetFileName(...). We scan the assets array by finding
-            // the asset name first, then the download URL that follows it.
-            result.InstallerUrl = FindInstallerUrl(json, result.LatestVersion);
-        }
-
-        /// <summary>
-        /// Extracts the first string value for a given JSON key using simple
-        /// substring search.  Handles escaped quotes and basic escape sequences.
-        /// Returns empty string when the key is not found.
-        /// </summary>
-        private static string ExtractStringValue(string json, string key)
-        {
-            // Look for  "key":  (with optional whitespace)
-            var needle = "\"" + key + "\"";
-            var keyIdx = json.IndexOf(needle, StringComparison.Ordinal);
-            if (keyIdx < 0) return "";
-
-            var afterKey = keyIdx + needle.Length;
-
-            // Skip whitespace and colon
-            while (afterKey < json.Length && (json[afterKey] == ' ' || json[afterKey] == '\t' || json[afterKey] == '\r' || json[afterKey] == '\n'))
-                afterKey++;
-
-            if (afterKey >= json.Length || json[afterKey] != ':') return "";
-            afterKey++; // skip ':'
-
-            while (afterKey < json.Length && (json[afterKey] == ' ' || json[afterKey] == '\t' || json[afterKey] == '\r' || json[afterKey] == '\n'))
-                afterKey++;
-
-            if (afterKey >= json.Length) return "";
-
-            // null literal
-            if (json.Length >= afterKey + 4 && json.Substring(afterKey, 4) == "null")
-                return "";
-
-            if (json[afterKey] != '"') return "";
-
-            // Read quoted string with escape handling
-            return ReadJsonString(json, afterKey);
-        }
-
-        private static string ReadJsonString(string json, int openQuoteIdx)
-        {
-            var sb = new StringBuilder();
-            var i = openQuoteIdx + 1; // skip opening quote
-            while (i < json.Length)
-            {
-                var c = json[i];
-                if (c == '"') break; // closing quote
-                if (c == '\\' && i + 1 < json.Length)
-                {
-                    i++;
-                    switch (json[i])
-                    {
-                        case '"':  sb.Append('"');  break;
-                        case '\\': sb.Append('\\'); break;
-                        case '/':  sb.Append('/');  break;
-                        case 'n':  sb.Append('\n'); break;
-                        case 'r':  sb.Append('\r'); break;
-                        case 't':  sb.Append('\t'); break;
-                        case 'b':  sb.Append('\b'); break;
-                        case 'f':  sb.Append('\f'); break;
-                        case 'u':
-                            if (i + 4 < json.Length)
-                            {
-                                var hex = json.Substring(i + 1, 4);
-                                if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var code))
-                                    sb.Append((char)code);
-                                i += 4;
-                            }
-                            break;
-                        default:   sb.Append(json[i]); break;
-                    }
-                }
-                else
-                {
-                    sb.Append(c);
-                }
-                i++;
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Scans the assets array for an entry whose "name" matches the expected
-        /// installer filename, then returns the adjacent "browser_download_url".
-        /// Returns empty string when not found — not an error.
-        /// </summary>
-        private static string FindInstallerUrl(string json, string latestVersion)
-        {
-            if (string.IsNullOrEmpty(latestVersion)) return "";
-
-            var expectedName = GetExpectedInstallerAssetFileName(latestVersion);
-
-            // Find the assets array
-            var assetsIdx = json.IndexOf("\"assets\"", StringComparison.Ordinal);
-            if (assetsIdx < 0) return "";
-
-            // Walk through occurrences of "name" inside the assets section
-            var searchFrom = assetsIdx;
-            while (true)
-            {
-                var nameIdx = json.IndexOf("\"name\"", searchFrom, StringComparison.Ordinal);
-                if (nameIdx < 0) break;
-
-                var nameValue = ExtractStringValueAt(json, nameIdx);
-                if (string.Equals(nameValue, expectedName, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Found the right asset — now find browser_download_url in the
-                    // same asset object.  It should appear within the next ~512 chars.
-                    var urlIdx = json.IndexOf("\"browser_download_url\"", nameIdx, StringComparison.Ordinal);
-                    if (urlIdx >= 0 && urlIdx - nameIdx < 2048)
-                        return ExtractStringValueAt(json, urlIdx);
-                }
-
-                searchFrom = nameIdx + 6; // advance past "name"
-            }
-
-            return "";
-        }
-
-        /// <summary>
-        /// Like ExtractStringValue but starts from a known key position rather
-        /// than searching by key name.
-        /// </summary>
-        private static string ExtractStringValueAt(string json, int keyIdx)
-        {
-            // Skip past the key token to find the colon and value
-            var afterKey = json.IndexOf(':', keyIdx);
-            if (afterKey < 0) return "";
-            afterKey++;
-
-            while (afterKey < json.Length && (json[afterKey] == ' ' || json[afterKey] == '\t' || json[afterKey] == '\r' || json[afterKey] == '\n'))
-                afterKey++;
-
-            if (afterKey >= json.Length || json[afterKey] != '"') return "";
-            return ReadJsonString(json, afterKey);
-        }
-
-        /// <summary>
-        /// Returns true when <paramref name="candidate"/> is strictly greater than
-        /// <paramref name="current"/> using three-part numeric comparison (Major.Minor.Patch).
-        /// Falls back to string comparison when parsing fails.
-        /// </summary>
         private static bool IsNewer(string candidate, string current)
         {
             if (TryParseVersion(candidate, out var cand) &&
-                TryParseVersion(current,   out var cur))
+                TryParseVersion(current, out var cur))
             {
                 if (cand[0] != cur[0]) return cand[0] > cur[0];
                 if (cand[1] != cur[1]) return cand[1] > cur[1];
                 return cand[2] > cur[2];
             }
 
-            // Fallback: lexicographic — not ideal but safe
             return string.Compare(candidate, current, StringComparison.Ordinal) > 0;
         }
 
@@ -654,6 +426,7 @@ namespace AutoSaver.Services
                 if (!int.TryParse(segments[i], out parts[i]))
                     return false;
             }
+
             return true;
         }
     }
