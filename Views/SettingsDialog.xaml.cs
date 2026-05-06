@@ -106,6 +106,8 @@ namespace AutoSaver.Views
             ConfigService.ShowNotifications = NotifyCheck.IsChecked == true;
             ConfigService.CheckUpdatesOnStartup = CheckUpdatesCheck.IsChecked == true;
 
+            StartupService.ApplyStartupPreference();
+
             ThemeService.ApplyTheme(Application.Current);
 
             DialogResult = true;

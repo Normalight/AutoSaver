@@ -59,6 +59,7 @@
     <Compile Include="Services\ChangelogService.cs" />
     <Compile Include="Services\WindowService.cs" />
     <Compile Include="Services\SaveScheduler.cs" />
+    <Compile Include="Services\StartupService.cs" />
     <Compile Include="Services\ThemeService.cs" />
     <Compile Include="Services\ExecutableMetadataService.cs" />
     <Compile Include="Services\UpdateService.cs" />

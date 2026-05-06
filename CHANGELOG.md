@@ -5,6 +5,15 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.9] - 2026-05-07
+
+### Added
+- **Installer**: Upgrade path keeps the previous install dir (**`UsePreviousAppDir`**, same **AppId**); **`CloseApplications`** plus **`PrepareToInstall`** `taskkill` before overwriting files; **`[UninstallRun]`** stops the app without failing uninstall when the process is absent; finish-page tasks (**launch when done**, **Quick Launch** shortcut), **checked by default** (`checkedonce`).
+
+### Changed
+- **Config**: **Merge missing keys** from embedded `autosaver.default.ini` into existing `%AppData%\AutoSaver\autosaver.ini` on launch — new options ship without deleting user config.
+- **Startup with Windows**: Wire **`StartupService.ApplyStartupPreference`** from **`App.OnStartup`** and **settings save**; include **`StartupService.cs`** in **`AutoSaver.csproj`**. Registry writes use **`CreateSubKey`**, explicit **`REG_SZ`**, and **`autosaver.log`** lines prefixed with **`[StartupService]`** on failure (replacing silent failure).
+
 ## [1.5.8] - 2026-05-07
 
 ### Changed

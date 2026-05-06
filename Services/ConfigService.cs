@@ -22,6 +22,10 @@ namespace AutoSaver.Services
         private static extern bool WritePrivateProfileString(
             string lpAppName, string lpKeyName, string lpValue, string lpFileName);
 
+        /// <summary>用于判断键是否不存在（不可能出现在正常 ini 值中）。</summary>
+        private static readonly string MissingIniKeySentinel =
+            new string(new[] { '\uE000', '\uE001', '\uE002', '\uE003' });
+
         public static string IniPath
         {
             get
@@ -69,9 +73,19 @@ namespace AutoSaver.Services
 
         internal static string Read(string section, string key, string defaultValue = "")
         {
+            return ReadFromPath(IniPath, section, key, defaultValue);
+        }
+
+        private static string ReadFromPath(string iniPath, string section, string key, string defaultValue)
+        {
             var sb = new StringBuilder(512);
-            GetPrivateProfileString(section, key, defaultValue, sb, sb.Capacity, IniPath);
+            GetPrivateProfileString(section, key, defaultValue, sb, sb.Capacity, iniPath);
             return sb.ToString();
+        }
+
+        private static bool IniKeyExists(string iniPath, string section, string key)
+        {
+            return ReadFromPath(iniPath, section, key, MissingIniKeySentinel) != MissingIniKeySentinel;
         }
 
         internal static void Write(string section, string key, string value)
@@ -161,8 +175,112 @@ namespace AutoSaver.Services
                 }
             }
 
+            MergeMissingKeysFromEmbeddedDefaults();
+
             if (string.IsNullOrWhiteSpace(Read("global", "check_updates_on_startup", "")))
                 Write("global", "check_updates_on_startup", "true");
+        }
+
+        /// <summary>
+        /// 升级或默认模板新增字段时，仅补齐缺失键，不覆盖用户已有值。
+        /// </summary>
+        private static void MergeMissingKeysFromEmbeddedDefaults()
+        {
+            try
+            {
+                var defaults = LoadEmbeddedDefaultIniSections();
+                if (defaults == null || defaults.Count == 0)
+                    return;
+
+                foreach (var sectionName in defaults.Keys)
+                {
+                    foreach (var kv in defaults[sectionName])
+                    {
+                        if (IniKeyExists(IniPath, sectionName, kv.Key))
+                            continue;
+
+                        var value = kv.Value;
+                        if (sectionName.Equals("meta", StringComparison.OrdinalIgnoreCase)
+                            && kv.Key.Equals("version", StringComparison.OrdinalIgnoreCase))
+                            value = GetAssemblyVersionForIniMeta();
+
+                        Write(sectionName, kv.Key, value);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private static Dictionary<string, Dictionary<string, string>> LoadEmbeddedDefaultIniSections()
+        {
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream("AutoSaver.Resources.autosaver.default.ini"))
+                {
+                    if (stream == null)
+                        return null;
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        var text = reader.ReadToEnd();
+                        return ParseIniSections(text);
+                    }
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Dictionary<string, Dictionary<string, string>> ParseIniSections(string content)
+        {
+            var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            string section = null;
+
+            foreach (var raw in content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None))
+            {
+                var line = raw.Trim();
+                if (line.Length == 0 || line[0] == ';' || line[0] == '#')
+                    continue;
+
+                if (line.Length >= 2 && line[0] == '[' && line[line.Length - 1] == ']')
+                {
+                    section = line.Substring(1, line.Length - 2).Trim();
+                    if (!result.ContainsKey(section))
+                        result[section] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    continue;
+                }
+
+                var eq = line.IndexOf('=');
+                if (eq <= 0 || string.IsNullOrEmpty(section))
+                    continue;
+
+                var key = line.Substring(0, eq).Trim();
+                var val = line.Substring(eq + 1).Trim();
+                result[section][key] = val;
+            }
+
+            return result;
+        }
+
+        private static string GetAssemblyVersionForIniMeta()
+        {
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+                var iv = info?.InformationalVersion?.Trim();
+                if (!string.IsNullOrEmpty(iv))
+                    return iv;
+
+                var ver = asm.GetName().Version;
+                if (ver != null && !(ver.Major == 0 && ver.Minor == 0 && ver.Build == 0))
+                    return $"{ver.Major}.{ver.Minor}.{ver.Build}";
+            }
+            catch { }
+
+            return "1.0.0";
         }
 
         public static List<ProgramItem> LoadPrograms()

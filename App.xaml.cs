@@ -48,6 +48,7 @@ namespace AutoSaver
             }
 
             ConfigService.EnsureDefaults();
+            StartupService.ApplyStartupPreference();
 
             var assemblyVersion = GetAssemblyVersion();
             Version = assemblyVersion;

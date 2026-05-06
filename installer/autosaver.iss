@@ -1,4 +1,4 @@
-#define MyAppName "AutoSaver"
+﻿#define MyAppName "AutoSaver"
 #define MyAppPublisher "Normalight"
 #define MyAppURL "https://github.com/Normalight/AutoSaver"
 #define MyAppExeName "autosaver.exe"
@@ -18,6 +18,12 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+; 曾安装过同一 AppId 时沿用上次目录并覆盖文件（配置在 %AppData%，不在安装目录）
+UsePreviousAppDir=yes
+; 安装/覆盖前尝试关闭仍打开安装目录下文件的进程（与下方 taskkill 互补）
+CloseApplications=yes
+RestartApplications=no
+CloseApplicationsFilter={#MyAppExeName}
 OutputDir=..\dist
 ; Installer output basename (Inno appends .exe). MUST match the GitHub release asset name
 ; built in UpdateService.GetExpectedInstallerAssetFileName — see Services/UpdateService.cs
@@ -27,6 +33,10 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\app-icon.ico
+
+[Tasks]
+Name: "launchnow"; Description: "安装完成后立即启动 {#MyAppName}"; GroupDescription: "附加选项"; Flags: checkedonce
+Name: "quicklaunch"; Description: "将快捷方式添加到「快速启动」栏"; GroupDescription: "附加选项"; Flags: checkedonce
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -40,3 +50,22 @@ Source: "..\bin\Release\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app-icon.ico"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app-icon.ico"; Tasks: quicklaunch
+
+[Run]
+Filename: "{app}\{#MyAppExeName}"; Description: "立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent; Tasks: launchnow
+
+[UninstallRun]
+; taskkill 返回码非 0（进程不存在）时仍需卸载继续，故由 cmd 吞掉错误
+Filename: "{sys}\cmd.exe"; Parameters: "/c taskkill /F /IM {#MyAppExeName} /T >nul 2>&1 & exit /b 0"; Flags: runhidden
+
+[Code]
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  // 覆盖安装前强制结束进程，避免 exe 被占用导致更新失败
+  Exec(ExpandConstant('{sys}\taskkill.exe'), ExpandConstant('/F /IM {#MyAppExeName} /T'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := '';
+end;
