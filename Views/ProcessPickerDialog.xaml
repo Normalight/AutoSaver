@@ -1,0 +1,10 @@
+<Window x:Class="AutoSaver.Views.ProcessPickerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Title="选择正在运行的程序" Height="350" Width="300"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <DockPanel Margin="8">
+        <TextBlock DockPanel.Dock="Top" Text="双击选择进程：" Margin="0,0,0,6"/>
+        <ListBox x:Name="ProcessList" DisplayMemberPath="DisplayName"
+                 MouseDoubleClick="OnItemDoubleClick"/>
+    </DockPanel>
+</Window>
