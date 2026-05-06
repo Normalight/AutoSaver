@@ -1,85 +1,102 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Project overview
 
-AutoSaver is a Windows desktop app that monitors drawing applications (SAI2, Photoshop, etc.) and automatically sends `Ctrl+S` to their windows at configurable intervals. It runs as a system tray application.
+AutoSaver is a Windows system tray app that monitors drawing applications (SAI2, Photoshop, etc.) and automatically sends `Ctrl+S` to their windows via `PostMessage` at configurable intervals. No focus stealing, multi-window aware.
 
 ## Tech stack
 
-- Python 3.11+
-- PySide6 (GUI and Qt signals for thread communication)
-- pywin32 for Windows API (window enumeration, `PostMessage`-based keystroke injection)
-- psutil for process enumeration
-- PyInstaller (`--onedir`) for distribution
+- C# 7.3 / .NET Framework 4.8
+- WPF (UI), System.Windows.Forms.NotifyIcon (tray)
+- P/Invoke (user32.dll for window enumeration + PostMessage, kernel32.dll for INI read/write)
+- Zero NuGet dependencies, zero runtime install (~300KB exe)
+- MSBuild for compilation (Visual Studio Build Tools 2022 or full VS)
+- GitHub Actions for CI/CD (windows-latest runner)
 
 ## Build / run
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+```bat
+:: One-time: install Visual Studio Build Tools 2022
+:: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
 
-# Run during development
-python src/main.py
+:: Build from Developer Command Prompt for VS 2022:
+msbuild AutoSaver.csproj /p:Configuration=Release
 
-# Package for distribution
-pyinstaller --onedir --windowed --name autosaver --icon assets/icon.ico src/main.py
+:: Output: bin\Release\autosaver.exe (copy + generated-image-2.png to distribute)
 ```
+
+No `dotnet build` — this is .NET Framework 4.8, not .NET Core. Must use MSBuild on Windows.
 
 ## Architecture
 
 ```
-src/
-├── main.py              # Entry point: QApplication + system tray
-├── core/
-│   ├── config.py        # Read/write config.json (atomic write via temp+rename)
-│   ├── monitor.py       # ProcessMonitor(QThread): polls for target exe presence
-│   ├── scheduler.py     # SaveScheduler(QThread): per-program save timers
-│   └── saver.py         # Window enumeration + PostMessage-based Ctrl+S
-└── ui/
-    ├── main_window.py   # Program list with status/interval/actions columns
-    ├── add_dialog.py    # Add/edit program dialog with running-process picker
-    └── tray.py          # System tray icon and context menu
+AutoSaver/
+├── App.xaml/.cs              # Entry: theme init, tray setup, signal wiring, icon extraction
+├── VERSION                   # Single source of truth for version number (SemVer)
+├── CHANGELOG.md              # Release notes per version
+├── Models/
+│   ├── ProgramItem.cs        # Domain model: Id, Name, Exe, Enabled, SaveIntervalSec
+│   └── ProgramDisplay.cs     # View model: adds StatusText, StatusColor (Brush), IntervalText
+├── Services/
+│   ├── ConfigService.cs      # INI read/write via kernel32 P/Invoke
+│   ├── ThemeService.cs       # Dark/Light/System theme detection and switching
+│   ├── ProcessMonitor.cs     # DispatcherTimer polls Process.GetProcesses()
+│   ├── SaveScheduler.cs      # Per-program System.Timers.Timer → WindowService
+│   └── WindowService.cs      # P/Invoke: EnumWindows + PostMessage Ctrl+S
+├── Views/
+│   ├── MainWindow.xaml/.cs   # Program list, create/destroy per show cycle
+│   ├── AddEditDialog.xaml/.cs # Two add methods: browse exe + pick running process
+│   ├── ProcessPickerDialog.xaml/.cs # Running process list with search filter
+│   └── SettingsDialog.xaml/.cs # Theme, interval, startup, tray settings
+├── Themes/
+│   ├── DarkTheme.xaml        # Dark theme resource dictionary (#121214 base)
+│   └── LightTheme.xaml       # Light theme resource dictionary (#F5F5F8 base)
+├── Resources/
+│   └── app-icon.png          # Embedded resource, extracted to %TEMP% at runtime
+└── .github/workflows/
+    └── build.yml             # CI: build on push/PR, release on tag
 ```
 
 ## Data flow
 
-1. `ProcessMonitor` (background thread) polls processes every `check_interval_sec` seconds; emits `status_changed(program_id, running: bool)` when a target exe starts or stops.
-2. `SaveScheduler` (one per enabled program) triggers every `save_interval_sec`; calls `saver.get_windows_by_exe(exe)` to find all visible top-level windows belonging to the target process, then calls `saver.send_ctrl_s(hwnd)` on each.
-3. UI (PySide6 main thread) receives Qt signals from monitor/scheduler threads to update program status indicators and "last saved" display.
+1. `ProcessMonitor` (DispatcherTimer, UI thread) polls `Process.GetProcesses()` every `check_interval_sec`; emits `StatusChanged(ProgramItem, bool)` when running state changes.
+2. `SaveScheduler` (one `System.Timers.Timer` per program, thread pool) triggers at `save_interval_sec`; calls `WindowService.GetWindowsByExe()` → `SendCtrlS()` on each HWND.
+3. `App.xaml.cs` wires signals: Monitor → UI updates + Scheduler start/stop; Scheduler → UI last-save display.
+4. `MainWindow` created with `new MainWindow(programs)` on tray double-click, destroyed on close (`Closed` → `_mainWindow = null`).
 
-Thread communication uses Qt signals exclusively — no shared mutable state.
+**Thread safety:** `DispatcherTimer` callbacks are on UI thread. `System.Timers.Timer` callbacks (`DoSave`) run on thread pool — use `Dispatcher.Invoke()` for UI updates. `SaveScheduler` uses `lock(_lock)` to protect `_timers` dictionary.
 
 ## Key design decisions
 
-- `Ctrl+S` is sent via `PostMessage(WM_KEYDOWN/UP)` so it never steals focus from the user.
-- `config.json` lives next to the exe; first-run auto-creates defaults.
-- On close, the window minimizes to tray (if `minimize_to_tray_on_close` is enabled) rather than quitting.
-- Startup-with-Windows is implemented via `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key.
-- Logging uses Python's `RotatingFileHandler` (1 MB max, 1 backup) to `autosaver.log`.
+- `ShutdownMode="OnExplicitShutdown"` in App.xaml — closing the window does NOT quit the app.
+- Icon embedded as `EmbeddedResource` in .csproj, extracted to `%TEMP%\autosaver_icon.png` at startup, cleaned up on exit.
+- Themes loaded via `ResourceDictionary.MergedDictionaries` swap; `ThemeService` detects system theme from registry `AppsUseLightTheme`.
+- `ProcessMonitor.RefreshPrograms` creates a defensive copy of the programs list.
 
-## Config file format
+## Version management (MANDATORY)
 
-```json
-{
-  "global": {
-    "start_with_windows": false,
-    "check_interval_sec": 3,
-    "minimize_to_tray_on_close": true
-  },
-  "programs": [
-    {
-      "id": "uuid",
-      "name": "SAI2",
-      "exe": "sai2.exe",
-      "enabled": true,
-      "save_interval_sec": 300
-    }
-  ]
-}
-```
+**These rules are binding. Do not skip them.**
 
-## Full design spec
+### When changing version:
+1. The **single source of truth** for the version number is the `VERSION` file at the repo root. Use [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`.
+2. When bumping the version, update **ALL** of these files to match:
+   - `VERSION` — the version number only (e.g., `1.0.0`)
+   - `CHANGELOG.md` — add a new `## [X.Y.Z] - YYYY-MM-DD` section at the top, following the existing format
+   - `README.md` — if version referenced in text (e.g., badges)
 
-See `docs/superpowers/specs/2026-05-06-autosaver-design.md` for the complete design document including UI mockups, edge case handling, and module API details.
+### When creating a release:
+1. Update `VERSION` and `CHANGELOG.md` in a commit with message `release: vX.Y.Z`
+2. Create an annotated Git tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+3. Push the tag: `git push origin vX.Y.Z`
+4. GitHub Actions will automatically build and create a GitHub Release with `autosaver.exe` attached
+
+### CHANGELOG format:
+- Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+- Sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`
+- Each entry is a bullet point describing the change from the user's perspective
+
+## Logging
+
+Simple `File.AppendAllText` to `autosaver.log` next to the exe. Format: `yyyy-MM-dd HH:mm:ss [message]`. No log rotation in the C# version (kept simple; users can delete the file to reset).

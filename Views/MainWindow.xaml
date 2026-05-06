@@ -19,7 +19,7 @@
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="AutoSaver" Style="{StaticResource H1}"/>
-                    <TextBlock Text="v1.0" Style="{StaticResource Caption}"
+                    <TextBlock x:Name="VersionLabel" Style="{StaticResource Caption}"
                                VerticalAlignment="Bottom" Margin="8,0,0,2"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

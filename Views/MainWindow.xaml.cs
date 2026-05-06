@@ -24,6 +24,7 @@ namespace AutoSaver.Views
         {
             InitializeComponent();
             _programs = programs;
+            VersionLabel.Text = "v" + App.Version;
             RefreshList();
         }
 

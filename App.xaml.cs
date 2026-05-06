@@ -22,13 +22,24 @@ namespace AutoSaver
         private string _logPath;
         private string _iconTempPath;
 
+        public static string Version { get; private set; } = "1.0.0";
+
         private void OnStartup(object sender, StartupEventArgs e)
         {
+            // Read version from VERSION file
+            try
+            {
+                var versionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VERSION");
+                if (File.Exists(versionPath))
+                    Version = File.ReadAllText(versionPath).Trim();
+            }
+            catch { }
+
             // Theme must be first - applies to all windows
             ThemeService.InitTheme(this);
 
             _logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "autosaver.log");
-            Log("AutoSaver starting");
+            Log($"AutoSaver v{Version} starting");
 
             // Extract embedded icon to temp file for NotifyIcon
             ExtractIcon();

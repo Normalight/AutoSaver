@@ -2,6 +2,32 @@ __pycache__/
 *.pyc
 *.pyo
 *.spec
+*.suo
+*.user
+*.vs/
+*.DotSettings.user
+
+# Build outputs
+bin/
+obj/
 dist/
 build/
+debug/
+release/
+*.exe
+*.dll
+*.pdb
+
+# Logs
 autosaver.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

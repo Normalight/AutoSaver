@@ -97,6 +97,9 @@
       <SubType>Code</SubType>
     </Compile>
     <EmbeddedResource Include="Resources\app-icon.png" />
+    <Content Include="VERSION">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
