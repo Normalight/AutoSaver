@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.14] - 2026-05-07
+
+### Fixed
+- **Installer（Inno 6）**：卸载脚本中 **`DelTree`** 调用参数个数错误（需 **`IsDir, DeleteFiles, DeleteSubdirsAlso`** 三个布尔参数），导致 ISCC 报错 **`Invalid number of parameters`**、CI 无法编译安装包。
+
 ## [1.5.13] - 2026-05-07
 
 ### Changed
