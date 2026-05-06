@@ -127,5 +127,35 @@ namespace AutoSaver.Services
             ShowWindow(hWnd, SW_RESTORE);
             SetForegroundWindow(hWnd);
         }
+
+        public static int GetWindowCountByExe(string exeName)
+        {
+            var pids = new HashSet<int>();
+            var exeLower = exeName.ToLowerInvariant();
+
+            foreach (var proc in Process.GetProcesses())
+            {
+                try
+                {
+                    if (proc.ProcessName.ToLowerInvariant() == exeLower
+                        || (proc.ProcessName + ".exe").ToLowerInvariant() == exeLower)
+                        pids.Add(proc.Id);
+                }
+                catch { }
+            }
+
+            if (pids.Count == 0) return 0;
+
+            int count = 0;
+            EnumWindows((hWnd, _) =>
+            {
+                GetWindowThreadProcessId(hWnd, out var pid);
+                if (pids.Contains((int)pid))
+                    count++;
+                return true;
+            }, IntPtr.Zero);
+
+            return count;
+        }
     }
 }

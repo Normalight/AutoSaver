@@ -103,36 +103,44 @@ namespace AutoSaver.Services
         {
             try
             {
-                var hwnds = WindowService.GetWindowsByExe(prog.Exe);
                 var timestamp = DateTime.Now.ToString("HH:mm:ss");
 
-                bool processExists = false;
-                try
+                // Count windows before save
+                var before = WindowService.GetWindowCountByExe(prog.Exe);
+                if (before == 0)
                 {
-                    var exeName = prog.Exe.ToLowerInvariant();
-                    if (exeName.EndsWith(".exe"))
-                        exeName = exeName.Substring(0, exeName.Length - 4);
-                    processExists = Process.GetProcessesByName(exeName).Length > 0;
-                }
-                catch { }
-
-                if (hwnds.Count == 0 && processExists)
-                {
-                    // Process running but no visible window — may need manual save
+                    // Not running — skip silently
                     SaveDone?.Invoke(prog.Id, timestamp, 0);
+                    return;
+                }
+
+                var hwnds = WindowService.GetWindowsByExe(prog.Exe);
+                foreach (var hwnd in hwnds)
+                    WindowService.SendCtrlS(hwnd);
+
+                // Brief wait for potential dialog to appear
+                System.Threading.Thread.Sleep(200);
+
+                // Count windows after save — new window = dialog popped up
+                var after = WindowService.GetWindowCountByExe(prog.Exe);
+
+                if (after > before)
+                {
+                    // New dialog appeared — needs manual save confirmation
+                    SaveDone?.Invoke(prog.Id, timestamp, hwnds.Count);
                     SaveCompleted?.Invoke(new SaveResult
                     {
                         Program = prog,
                         Status = SaveStatus.NeedsConfirm,
-                        Message = "程序运行中但无可见窗口，请手动确认保存",
-                        WindowCount = 0,
+                        Message = "检测到保存对话框，请手动选择保存位置",
+                        WindowCount = hwnds.Count,
                         JumpAction = () =>
                         {
                             try
                             {
                                 var all = WindowService.GetAllWindowsByExe(prog.Exe);
                                 if (all.Count > 0)
-                                    WindowService.BringToFront(all[0]);
+                                    WindowService.BringToFront(all[all.Count - 1]);
                             }
                             catch { }
                         }
@@ -140,23 +148,7 @@ namespace AutoSaver.Services
                     return;
                 }
 
-                if (hwnds.Count == 0)
-                {
-                    // No process, no window — save skipped
-                    SaveDone?.Invoke(prog.Id, timestamp, 0);
-                    SaveCompleted?.Invoke(new SaveResult
-                    {
-                        Program = prog,
-                        Status = SaveStatus.Failed,
-                        Message = "程序未运行，保存跳过",
-                        WindowCount = 0
-                    });
-                    return;
-                }
-
-                foreach (var hwnd in hwnds)
-                    WindowService.SendCtrlS(hwnd);
-
+                // Success — no new dialog appeared
                 SaveDone?.Invoke(prog.Id, timestamp, hwnds.Count);
                 SaveCompleted?.Invoke(new SaveResult
                 {
