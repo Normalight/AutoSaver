@@ -36,6 +36,9 @@ namespace AutoSaver.Services
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
+        private static extern bool AllowSetForegroundWindow(int dwProcessId);
+
+        [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         private const int SW_RESTORE = 9;
@@ -125,6 +128,12 @@ namespace AutoSaver.Services
         public static void BringToFront(IntPtr hWnd)
         {
             ShowWindow(hWnd, SW_RESTORE);
+            // Windows blocks SetForegroundWindow unless the calling thread already owns
+            // the foreground. AllowSetForegroundWindow grants the target process permission
+            // to steal the foreground, which is required when called from a background thread
+            // or after the notification overlay has started hiding.
+            GetWindowThreadProcessId(hWnd, out var pid);
+            AllowSetForegroundWindow((int)pid);
             SetForegroundWindow(hWnd);
         }
 

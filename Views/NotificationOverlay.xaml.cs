@@ -32,27 +32,27 @@ namespace AutoSaver.Views
             switch (type)
             {
                 case NotificationType.Success:
-                    StatusBar.Background = new SolidColorBrush(Color.FromRgb(0x34, 0xD3, 0x99));
+                    StatusBar.Background = ThemeBrush("SuccessColor", 0x34, 0xD3, 0x99);
                     TitleText.Text = $"✓ {programName} 已保存";
-                    TitleText.Foreground = new SolidColorBrush(Color.FromRgb(0x34, 0xD3, 0x99));
+                    TitleText.Foreground = ThemeBrush("SuccessColor", 0x34, 0xD3, 0x99);
                     JumpButton.Visibility = Visibility.Collapsed;
                     CloseButton.Visibility = Visibility.Collapsed;
                     _autoHideTimer.Start();
                     break;
 
                 case NotificationType.NeedsConfirm:
-                    StatusBar.Background = new SolidColorBrush(Color.FromRgb(0xFB, 0xBF, 0x24));
+                    StatusBar.Background = ThemeBrush("WarningColor", 0xFB, 0xBF, 0x24);
                     TitleText.Text = $"⚠ {programName}";
-                    TitleText.Foreground = new SolidColorBrush(Color.FromRgb(0xFB, 0xBF, 0x24));
+                    TitleText.Foreground = ThemeBrush("WarningColor", 0xFB, 0xBF, 0x24);
                     DetailText.Text = detail;
                     JumpButton.Visibility = Visibility.Visible;
                     CloseButton.Visibility = Visibility.Visible;
                     break;
 
                 case NotificationType.Failed:
-                    StatusBar.Background = new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71));
+                    StatusBar.Background = ThemeBrush("DangerColor", 0xF8, 0x71, 0x71);
                     TitleText.Text = $"✕ {programName}";
-                    TitleText.Foreground = new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71));
+                    TitleText.Foreground = ThemeBrush("DangerColor", 0xF8, 0x71, 0x71);
                     DetailText.Text = detail;
                     JumpButton.Visibility = Visibility.Collapsed;
                     CloseButton.Visibility = Visibility.Visible;
@@ -64,18 +64,24 @@ namespace AutoSaver.Views
             SlideIn();
         }
 
+        private Brush ThemeBrush(string resourceKey, byte r, byte g, byte b)
+        {
+            return TryFindResource(resourceKey) as Brush ?? new SolidColorBrush(Color.FromRgb(r, g, b));
+        }
+
         private void SlideIn()
         {
-            var screen = System.Windows.Forms.Screen.PrimaryScreen;
-            var workingArea = screen.WorkingArea;
-            Left = (workingArea.Width - Width) / 2 + workingArea.Left;
+            // Use WPF SystemParameters (logical pixels) to avoid DPI mismatch with
+            // Screen.WorkingArea which returns physical pixels.
+            var workArea = SystemParameters.WorkArea;
+            Left = workArea.Left + (workArea.Width - Width) / 2;
             Top = -Height;
 
-            var anim = new DoubleAnimation(workingArea.Top + 10, TimeSpan.FromMilliseconds(300))
+            var anim = new DoubleAnimation(workArea.Top + 10, TimeSpan.FromMilliseconds(300))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            anim.Completed += (s, e) => Top = workingArea.Top + 10;
+            anim.Completed += (s, e) => Top = workArea.Top + 10;
             BeginAnimation(TopProperty, anim);
         }
 
@@ -92,8 +98,12 @@ namespace AutoSaver.Views
         private void OnJumpClick(object sender, RoutedEventArgs e)
         {
             _autoHideTimer.Stop();
-            _onJump?.Invoke();
+            // Hide first so AutoSaver starts releasing the foreground, then invoke the
+            // jump action. This gives SetForegroundWindow a better chance to succeed
+            // because the target process can take the foreground while we're animating out.
+            var jump = _onJump;
             HideAnimated();
+            jump?.Invoke();
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)

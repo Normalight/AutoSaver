@@ -1,10 +1,21 @@
 using System;
 using System.Globalization;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
 namespace AutoSaver.Converters
 {
+    internal static class ThemeBrushHelper
+    {
+        public static SolidColorBrush TryBrush(string resourceKey, byte r, byte g, byte b)
+        {
+            if (Application.Current?.TryFindResource(resourceKey) is SolidColorBrush br)
+                return br;
+            return new SolidColorBrush(Color.FromRgb(r, g, b));
+        }
+    }
+
     // "暂停" path when enabled, "播放" path when disabled
     public class BoolToPausePlayPathConverter : IValueConverter
     {
@@ -27,8 +38,8 @@ namespace AutoSaver.Converters
         {
             bool enabled = value is bool b && b;
             return enabled
-                ? new SolidColorBrush(Color.FromRgb(0x8E, 0x8E, 0x98))   // muted when enabled (pause)
-                : new SolidColorBrush(Color.FromRgb(0x63, 0x66, 0xF1));   // accent when disabled (play)
+                ? ThemeBrushHelper.TryBrush("TextMuted", 0x8E, 0x8E, 0x98)
+                : ThemeBrushHelper.TryBrush("AccentColor", 0x63, 0x66, 0xF1);
         }
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             => throw new NotImplementedException();
@@ -42,7 +53,7 @@ namespace AutoSaver.Converters
             // play icon needs fill, pause icon uses stroke only
             return enabled
                 ? Brushes.Transparent
-                : new SolidColorBrush(Color.FromRgb(0x63, 0x66, 0xF1));
+                : ThemeBrushHelper.TryBrush("AccentColor", 0x63, 0x66, 0xF1);
         }
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             => throw new NotImplementedException();

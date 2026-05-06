@@ -16,7 +16,7 @@
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="4"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*" MinWidth="0"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
@@ -25,12 +25,12 @@
                     Margin="-14,8,10,8" Width="4"/>
 
             <!-- Message -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                 <TextBlock x:Name="TitleText" FontSize="13" FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"/>
                 <TextBlock x:Name="DetailText" FontSize="12"
                            Foreground="{DynamicResource TextSecondary}"
-                           TextTrimming="CharacterEllipsis" MaxWidth="280"/>
+                           TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 
             <!-- Actions -->

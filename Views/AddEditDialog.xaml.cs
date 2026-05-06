@@ -40,7 +40,8 @@ namespace AutoSaver.Views
             if (dlg.ShowDialog() == true)
             {
                 ExeBox.Text = System.IO.Path.GetFileName(dlg.FileName);
-                NameBox.Text = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+                NameBox.Text = ExecutableMetadataService.GetFriendlyName(dlg.FileName)
+                               ?? System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
             }
         }
 
@@ -51,7 +52,9 @@ namespace AutoSaver.Views
             if (picker.ShowDialog() == true && !string.IsNullOrEmpty(picker.SelectedProcessName))
             {
                 ExeBox.Text = picker.SelectedProcessName;
-                NameBox.Text = System.IO.Path.GetFileNameWithoutExtension(picker.SelectedProcessName);
+                NameBox.Text = !string.IsNullOrWhiteSpace(picker.SelectedFriendlyName)
+                    ? picker.SelectedFriendlyName
+                    : System.IO.Path.GetFileNameWithoutExtension(picker.SelectedProcessName);
             }
         }
 

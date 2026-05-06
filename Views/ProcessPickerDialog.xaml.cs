@@ -1,15 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using AutoSaver.Services;
 
 namespace AutoSaver.Views
 {
@@ -40,10 +37,11 @@ namespace AutoSaver.Views
         private List<ProcessDisplay> _allProcesses;
 
         public string SelectedProcessName { get; private set; }
+        public string SelectedFriendlyName { get; private set; }
 
         private class ProcessDisplay
         {
-            public string DisplayName { get; set; }
+            public string DisplayName { get; set; }   // friendly name (FileDescription / ProductName)
             public string ExeName { get; set; }
             public ImageSource Icon { get; set; }
         }
@@ -96,11 +94,14 @@ namespace AutoSaver.Views
                     var exeName = proc.ProcessName + ".exe";
                     if (!seen.Add(exeName)) continue;
 
+                    var path = ExecutableMetadataService.GetProcessPath(proc);
+                    var friendlyName = ExecutableMetadataService.GetFriendlyName(path) ?? proc.ProcessName;
+
                     list.Add(new ProcessDisplay
                     {
-                        DisplayName = exeName,
+                        DisplayName = friendlyName,
                         ExeName = exeName,
-                        Icon = GetProcessIcon(proc)
+                        Icon = ExecutableMetadataService.GetIcon(path)
                     });
                 }
                 catch { }
@@ -108,47 +109,6 @@ namespace AutoSaver.Views
 
             _allProcesses = list;
             ApplyFilter("");
-        }
-
-        private static ImageSource GetProcessIcon(Process proc)
-        {
-            try
-            {
-                var path = GetProcessPath(proc);
-                if (string.IsNullOrEmpty(path)) return null;
-                var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                if (icon == null) return null;
-                return Imaging.CreateBitmapSourceFromHIcon(
-                    icon.Handle,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions());
-            }
-            catch { return null; }
-        }
-
-        private static string GetProcessPath(Process proc)
-        {
-            try
-            {
-                // Try MainModule first (fast, but can throw for elevated/system processes)
-                return proc.MainModule?.FileName;
-            }
-            catch
-            {
-                // Fallback via P/Invoke
-                try
-                {
-                    var hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, proc.Id);
-                    if (hProcess == IntPtr.Zero) return null;
-                    var sb = new StringBuilder(1024);
-                    var size = sb.Capacity;
-                    if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
-                        return sb.ToString();
-                    CloseHandle(hProcess);
-                }
-                catch { }
-                return null;
-            }
         }
 
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
@@ -166,7 +126,8 @@ namespace AutoSaver.Views
             {
                 var q = query.ToLowerInvariant();
                 ProcessList.ItemsSource = _allProcesses
-                    .Where(p => p.ExeName.ToLowerInvariant().Contains(q))
+                    .Where(p => p.DisplayName.ToLowerInvariant().Contains(q)
+                             || p.ExeName.ToLowerInvariant().Contains(q))
                     .ToList();
             }
         }
@@ -204,6 +165,7 @@ namespace AutoSaver.Views
             if (ProcessList.SelectedItem is ProcessDisplay item)
             {
                 SelectedProcessName = item.ExeName;
+                SelectedFriendlyName = item.DisplayName;
                 DialogResult = true;
                 Close();
             }

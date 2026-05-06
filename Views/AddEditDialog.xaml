@@ -24,11 +24,26 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Button x:Name="BrowseButton" Grid.Column="0"
-                        Content="📁 选择本地程序" Style="{StaticResource SecondaryButton}"
-                        Click="OnBrowseClick"/>
+                        Style="{StaticResource SecondaryButton}"
+                        Click="OnBrowseClick">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"
+                              Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.35"
+                              Fill="Transparent" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+                        <TextBlock Text="选择本地程序" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="PickRunningButton" Grid.Column="2"
-                        Content="📋 正在运行中选取" Style="{StaticResource SecondaryButton}"
-                        Click="OnPickRunningClick"/>
+                        Style="{StaticResource SecondaryButton}"
+                        Click="OnPickRunningClick">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
+                              Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.2"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+                        <TextBlock Text="正在运行中选取" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
             </Grid>
 
             <!-- Form -->

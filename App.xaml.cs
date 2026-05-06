@@ -176,8 +176,13 @@ namespace AutoSaver
 
             _mainWindow.ProgramAdded += OnProgramAdded;
             _mainWindow.ProgramDeleted += OnProgramDeleted;
+            _mainWindow.SettingsSaved += OnMainWindowSettingsSaved;
 
-            _mainWindow.Closed += (s, e) => { _mainWindow = null; };
+            _mainWindow.Closed += (s, e) =>
+            {
+                _mainWindow.SettingsSaved -= OnMainWindowSettingsSaved;
+                _mainWindow = null;
+            };
 
             _mainWindow.Show();
         }
@@ -203,12 +208,20 @@ namespace AutoSaver
             var dlg = new SettingsDialog();
             dlg.Owner = _mainWindow; // may be null, that's fine
             if (dlg.ShowDialog() == true)
-            {
-                _scheduler.SetInterval(ConfigService.CheckIntervalSec);
-                _monitor.Stop();
-                _monitor.Start(ConfigService.CheckIntervalSec);
-                Log("Settings updated");
-            }
+                ApplySavedSettings();
+        }
+
+        private void OnMainWindowSettingsSaved()
+        {
+            ApplySavedSettings();
+        }
+
+        private void ApplySavedSettings()
+        {
+            _scheduler.SetInterval(ConfigService.CheckIntervalSec);
+            _monitor.Stop();
+            _monitor.Start(ConfigService.CheckIntervalSec);
+            Log("Settings updated");
         }
 
         private void OnStatusChanged(ProgramItem prog, bool running)

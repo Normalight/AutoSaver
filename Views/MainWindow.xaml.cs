@@ -3,14 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using AutoSaver.Models;
 using AutoSaver.Services;
 using Microsoft.Win32;
@@ -20,25 +16,16 @@ namespace AutoSaver.Views
 {
     public partial class MainWindow : Window
     {
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
-
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
-
-        [DllImport("kernel32.dll")]
-        private static extern bool CloseHandle(IntPtr hObject);
-
-        private const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
-
         private List<ProgramItem> _programs;
         private readonly Dictionary<string, string> _statuses = new Dictionary<string, string>();
         private readonly Dictionary<string, Tuple<string, int>> _lastSaves = new Dictionary<string, Tuple<string, int>>();
-        private static readonly SolidColorBrush SuccessBrush = new SolidColorBrush(Color.FromRgb(0x34, 0xD3, 0x99));
-        private static readonly SolidColorBrush MutedBrush = new SolidColorBrush(Color.FromRgb(0x8E, 0x8E, 0x98));
+        private static readonly SolidColorBrush FallbackSuccessBrush = new SolidColorBrush(Color.FromRgb(0x34, 0xD3, 0x99));
+        private static readonly SolidColorBrush FallbackMutedBrush = new SolidColorBrush(Color.FromRgb(0x8E, 0x8E, 0x98));
 
         public event Action<ProgramItem> ProgramAdded;
         public event Action<string> ProgramDeleted;
+        /// <summary>Fired when Settings dialog saves successfully (interval/theme/etc.).</summary>
+        public event Action SettingsSaved;
 
         private DispatcherTimer _countdownTimer;
         private DateTime _nextSaveTime;
@@ -84,15 +71,18 @@ namespace AutoSaver.Views
             var displayItems = _programs.Select(p =>
             {
                 var isRunning = _statuses.TryGetValue(p.Id, out var running) && running == "running";
+                var exePath = GetExePath(p.Exe);
                 return new ProgramDisplay
                 {
                     Id = p.Id,
-                    Name = p.Name,
+                    Name = CreateDisplayName(p.Name, p.Exe, exePath),
                     Exe = p.Exe,
                     ExeSummary = CreateExeSummary(p.Exe),
-                    StatusColor = isRunning ? SuccessBrush : MutedBrush,
+                    StatusColor = isRunning
+                        ? (TryFindResource("SuccessColor") as Brush ?? FallbackSuccessBrush)
+                        : (TryFindResource("TextMuted") as Brush ?? FallbackMutedBrush),
                     Enabled = p.Enabled,
-                    Icon = GetProgramIcon(p.Exe)
+                    Icon = GetIconFromPath(exePath)
                 };
             }).ToList();
 
@@ -140,56 +130,27 @@ namespace AutoSaver.Views
             return string.IsNullOrEmpty(fileName) ? exe : fileName;
         }
 
-        private static ImageSource GetProgramIcon(string exe)
+        private static string CreateDisplayName(string storedName, string exe, string exePath)
         {
-            try
-            {
-                var path = GetExePath(exe);
-                if (string.IsNullOrEmpty(path)) return null;
-                var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                if (icon == null) return null;
-                return Imaging.CreateBitmapSourceFromHIcon(
-                    icon.Handle,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions());
-            }
-            catch { return null; }
+            var friendlyName = ExecutableMetadataService.GetFriendlyName(exePath);
+            if (!string.IsNullOrWhiteSpace(friendlyName)) return friendlyName;
+            if (!string.IsNullOrWhiteSpace(storedName)) return storedName;
+            return Path.GetFileNameWithoutExtension(exe);
+        }
+
+        private static ImageSource GetIconFromPath(string path)
+        {
+            return ExecutableMetadataService.GetIcon(path);
         }
 
         private static string GetExePath(string exeName)
         {
-            var name = exeName;
-            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                name = name.Substring(0, name.Length - 4);
+            return ExecutableMetadataService.GetExePath(exeName);
+        }
 
-            foreach (var proc in Process.GetProcessesByName(name))
-            {
-                try
-                {
-                    var path = proc.MainModule?.FileName;
-                    if (!string.IsNullOrEmpty(path)) return path;
-                }
-                catch
-                {
-                    try
-                    {
-                        var hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, proc.Id);
-                        if (hProcess != IntPtr.Zero)
-                        {
-                            var sb = new StringBuilder(1024);
-                            var size = sb.Capacity;
-                            if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
-                            {
-                                CloseHandle(hProcess);
-                                return sb.ToString();
-                            }
-                            CloseHandle(hProcess);
-                        }
-                    }
-                    catch { }
-                }
-            }
-            return null;
+        private static string GetFriendlyName(string exePath)
+        {
+            return ExecutableMetadataService.GetFriendlyName(exePath);
         }
 
         private void OnAddClick(object sender, RoutedEventArgs e)
@@ -223,7 +184,8 @@ namespace AutoSaver.Views
             if (dlg.ShowDialog() != true) return;
 
             var exe = Path.GetFileName(dlg.FileName);
-            var name = Path.GetFileNameWithoutExtension(dlg.FileName);
+            var name = GetFriendlyName(dlg.FileName)
+                       ?? Path.GetFileNameWithoutExtension(dlg.FileName);
             AddProgram(name, exe);
         }
 
@@ -233,7 +195,9 @@ namespace AutoSaver.Views
             if (picker.ShowDialog() != true || string.IsNullOrEmpty(picker.SelectedProcessName)) return;
 
             var exe = picker.SelectedProcessName;
-            var name = Path.GetFileNameWithoutExtension(exe);
+            var name = !string.IsNullOrWhiteSpace(picker.SelectedFriendlyName)
+                ? picker.SelectedFriendlyName
+                : Path.GetFileNameWithoutExtension(exe);
             AddProgram(name, exe);
         }
 
@@ -288,7 +252,8 @@ namespace AutoSaver.Views
         private void OnSettingsClick(object sender, RoutedEventArgs e)
         {
             var dlg = new SettingsDialog { Owner = this };
-            dlg.ShowDialog();
+            if (dlg.ShowDialog() == true)
+                SettingsSaved?.Invoke();
         }
 
         private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)

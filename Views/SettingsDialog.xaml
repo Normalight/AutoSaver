@@ -2,16 +2,19 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:auto="clr-namespace:System.Windows.Automation;assembly=UIAutomationClient"
         Title="设置" Height="480" Width="380"
         MinHeight="420" MinWidth="360"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        WindowStyle="None" ResizeMode="NoResize">
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="True" Background="Transparent">
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
+        <shell:WindowChrome CaptionHeight="0" CornerRadius="12" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <Border Background="{DynamicResource WindowBackground}">
+    <Border Background="{DynamicResource WindowBackground}"
+            BorderBrush="{DynamicResource DividerColor}" BorderThickness="1" CornerRadius="12">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -38,7 +41,8 @@
                         <Button Content="✕" Style="{StaticResource GhostButton}"
                                 Height="34" Width="40" MinWidth="40" Padding="0"
                                 Foreground="{DynamicResource DangerColor}"
-                                Click="OnCloseClick" ToolTip="关闭"/>
+                                Click="OnCloseClick" ToolTip="关闭"
+                                auto:AutomationProperties.Name="关闭"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -57,9 +61,12 @@
                                     <ColumnDefinition Width="8"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Button x:Name="ThemeDarkBtn"  Grid.Column="0" Content="深色"   Height="36" Click="OnThemeDarkClick"/>
-                                <Button x:Name="ThemeLightBtn" Grid.Column="2" Content="浅色"   Height="36" Click="OnThemeLightClick"/>
-                                <Button x:Name="ThemeSystemBtn" Grid.Column="4" Content="跟随系统" Height="36" Click="OnThemeSystemClick"/>
+                                <Button x:Name="ThemeDarkBtn" Grid.Column="0" Style="{StaticResource SecondaryButton}"
+                                        Content="深色" Click="OnThemeDarkClick"/>
+                                <Button x:Name="ThemeLightBtn" Grid.Column="2" Style="{StaticResource SecondaryButton}"
+                                        Content="浅色" Click="OnThemeLightClick"/>
+                                <Button x:Name="ThemeSystemBtn" Grid.Column="4" Style="{StaticResource SecondaryButton}"
+                                        Content="跟随系统" Click="OnThemeSystemClick"/>
                             </Grid>
                         </StackPanel>
                     </Border>

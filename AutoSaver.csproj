@@ -43,6 +43,7 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />
+    <Reference Include="UIAutomationClient" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -62,6 +63,7 @@
     <Compile Include="Services\ProcessMonitor.cs" />
     <Compile Include="Services\SaveScheduler.cs" />
     <Compile Include="Services\ThemeService.cs" />
+    <Compile Include="Services\ExecutableMetadataService.cs" />
     <Page Include="Themes\DarkTheme.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

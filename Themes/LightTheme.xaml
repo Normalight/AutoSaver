@@ -23,6 +23,7 @@
     <SolidColorBrush x:Key="AccentColor" Color="#4F46E5"/>
     <SolidColorBrush x:Key="AccentHover" Color="#6366F1"/>
     <SolidColorBrush x:Key="AccentPressed" Color="#4338CA"/>
+    <SolidColorBrush x:Key="OnPrimaryForeground" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="DangerColor" Color="#DC2626"/>
     <SolidColorBrush x:Key="DangerHover" Color="#EF4444"/>
     <SolidColorBrush x:Key="SuccessColor" Color="#10B981"/>
