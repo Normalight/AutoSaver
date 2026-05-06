@@ -23,6 +23,9 @@ jobs:
           $v = $v.Trim()
           echo "value=$v" >> $env:GITHUB_OUTPUT
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
       - name: MSBuild
         shell: cmd
         run: |
