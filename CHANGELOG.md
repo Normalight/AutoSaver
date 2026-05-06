@@ -5,6 +5,27 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-06
+
+### Added
+- Card-based main window redesign with custom title bar controls and quick status summary.
+- Redesigned settings dialog with custom title bar, grouped cards, and scrollable content.
+- Release notes loading for the current app version from `CHANGELOG.md`.
+- GitHub release notes extraction for the matching version section.
+
+### Changed
+- Program list now uses responsive cards instead of the old fixed-column table layout.
+- Theme resources were unified across dark and light modes for consistent runtime switching.
+- Default check interval is now 30 seconds.
+- Settings interval input now supports seconds, minutes, and hours while storing seconds internally.
+- Program executable paths are shortened in cards, with the full path available as a tooltip.
+
+### Fixed
+- Fixed theme dictionary replacement so dark, light, and system-following modes update consistently.
+- Fixed settings window content being covered at smaller sizes by separating scrollable content from footer actions.
+- Fixed running-count display so deleted programs no longer leave stale running status behind.
+- Fixed release notes display so only the current version section is shown instead of the full changelog.
+
 ## [1.2.0] - 2026-05-06
 
 ### Added
