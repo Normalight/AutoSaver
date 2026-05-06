@@ -72,6 +72,7 @@ namespace AutoSaver
             _scheduler = new SaveScheduler();
             _scheduler.SaveDone += OnSaveDone;
             _scheduler.SaveCompleted += OnSaveCompleted;
+            _scheduler.IntervalTicked += OnIntervalTicked;
 
             foreach (var prog in _programs)
                 _scheduler.AddProgram(prog);
@@ -232,6 +233,11 @@ namespace AutoSaver
         {
             if (!ConfigService.ShowNotifications) return;
             Dispatcher.Invoke(() => ShowNotification(result));
+        }
+
+        private void OnIntervalTicked(int intervalSec)
+        {
+            Dispatcher.Invoke(() => _mainWindow?.SetNextSaveTime(intervalSec));
         }
 
         private void OnProgramAdded(ProgramItem prog)
