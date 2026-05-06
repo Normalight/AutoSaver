@@ -78,6 +78,7 @@ namespace AutoSaver
             _monitor.Start(ConfigService.CheckIntervalSec);
 
             SetupTray();
+            ShowMainWindow();
         }
 
         private static string GetAssemblyVersion()
