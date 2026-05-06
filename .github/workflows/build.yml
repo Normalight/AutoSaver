@@ -42,8 +42,16 @@ jobs:
         shell: pwsh
         run: |
           $ver = '${{ steps.version.outputs.value }}'
-          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) { throw "ISCC not found at $iscc" }
+          # Chocolatey / Inno may install under x86 or "Program Files" depending on runner image.
+          $candidates = @(
+            (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe")
+            (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
+          )
+          $iscc = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+          if (-not $iscc) {
+            throw "ISCC.exe not found. Tried:`n  - $($candidates -join "`n  - ")"
+          }
+          Write-Host "Using ISCC: $iscc"
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           & $iscc /DMyAppVersion=$ver "installer\autosaver.iss"
 
