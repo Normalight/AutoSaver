@@ -5,6 +5,17 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.13] - 2026-05-07
+
+### Changed
+- **Installer（Inno）**：「安装完成后立即启动」与「快速启动栏快捷方式」从 **`[Tasks]`** 改为 **`[Run]` `postinstall`**，仅在 **安装完成向导最后一页** 显示勾选框（不再出现在安装前半段的附加任务页）。
+
+### Added
+- **卸载**：开始时可选是否删除 **`%AppData%\AutoSaver`**（含 `autosaver.ini` 与监控列表）；静默卸载 **不删配置**；仍会尝试删除安装目录下遗留的 **`autosaver.ini`**（旧便携布局）。
+
+### Fixed
+- **卸载**：删除由安装脚本创建的「快速启动」快捷方式（**`[UninstallDelete]`**）。
+
 ## [1.5.12] - 2026-05-07
 
 ### Changed
