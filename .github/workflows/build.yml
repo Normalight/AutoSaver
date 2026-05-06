@@ -72,6 +72,7 @@ jobs:
         run: |
           $ver = '${{ steps.version.outputs.value }}'
           New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item -LiteralPath "Resources/app-icon.ico" -Destination "bin/Release/app-icon.ico" -Force
           $zipPath = "dist/AutoSaver-$ver-Portal.zip"
           Compress-Archive -Path @(
             "bin/Release/autosaver.exe",

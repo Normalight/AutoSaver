@@ -33,7 +33,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 Source: "..\bin\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\bin\Release\app-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+; Ship icon from repo (MSBuild may not copy Content items to output on some CI runners).
+Source: "..\Resources\app-icon.ico"; DestDir: "{app}"; DestName: "app-icon.ico"; Flags: ignoreversion
 Source: "..\bin\Release\VERSION"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\bin\Release\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 
