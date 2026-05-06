@@ -5,6 +5,11 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.17] - 2026-05-06
+
+### Fixed
+- **托盘模式**：关闭主窗口仅保留系统托盘时不再停止 `SaveScheduler` 的 1 秒定时器，**自动保存（Ctrl+S）继续生效**（此前 `SetTrayPaused(true)` 会 `Stop()` 定时器，导致倒计时与保存整条链路中断）。
+
 ## [1.5.16] - 2026-05-07
 
 ### Fixed

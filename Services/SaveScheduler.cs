@@ -57,7 +57,7 @@ namespace AutoSaver.Services
 
     /// <summary>
     /// 全局单一倒计时：不因切换窗口或更换前台监控程序而重置；仅在前台不在白名单时暂停递减；
-    /// 主窗口关闭（仅托盘）时暂停 Timer；退出进程时 <see cref="StopAll"/> 清空。
+    /// 主窗口关闭仅留托盘时仍保持 Timer 运行（自动保存继续）；退出进程时 <see cref="StopAll"/> 清空。
     /// </summary>
     public class SaveScheduler
     {
@@ -68,8 +68,6 @@ namespace AutoSaver.Services
         private Timer _timer;
         private int _globalIntervalSec = 30;
         private int _tickGate;
-
-        private bool _pausedByTray;
 
         private IntPtr _slotHwnd = IntPtr.Zero;
         private string _slotProgramId;
@@ -90,7 +88,6 @@ namespace AutoSaver.Services
             lock (_lock)
             {
                 StopInternal();
-                _pausedByTray = false;
                 _timer = new Timer(TickMs);
                 _timer.AutoReset = true;
                 _timer.Elapsed += OnSecondTick;
@@ -98,18 +95,12 @@ namespace AutoSaver.Services
             }
         }
 
-        /// <summary>主窗口关闭仅留托盘时暂停 1s Timer；重新打开主窗口时恢复。</summary>
+        /// <summary>
+        /// 保留调用点兼容：托盘模式下不再停止定时器，自动保存与前台监控照常运行；
+        /// UI 侧通过无主窗口引用跳过倒计时刷新。
+        /// </summary>
         public void SetTrayPaused(bool paused)
         {
-            lock (_lock)
-            {
-                _pausedByTray = paused;
-                if (_timer == null) return;
-                if (paused)
-                    _timer.Stop();
-                else
-                    _timer.Start();
-            }
         }
 
         public void SetInterval(int seconds)
@@ -173,7 +164,6 @@ namespace AutoSaver.Services
                 StopInternal();
                 _programs.Clear();
                 ClearSlotUnlocked();
-                _pausedByTray = false;
             }
 
             WindowService.InvalidatePidSnapshot();
