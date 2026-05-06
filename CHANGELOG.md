@@ -5,6 +5,12 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2026-05-07
+
+### Fixed
+- Notification overlay now centers correctly on high-DPI displays (125 %, 150 %, 200 % scaling). Previously used `Screen.WorkingArea` (physical pixels) to position a WPF window (logical pixels), causing the overlay to appear off-center at non-100 % DPI.
+- "Jump to window" button now reliably brings the target application to the foreground. Added `AllowSetForegroundWindow` before `SetForegroundWindow` to grant the target process permission to take focus, and reordered the hide/jump sequence so AutoSaver releases the foreground before the jump fires.
+
 ## [1.3.6] - 2026-05-07
 
 ### Added
@@ -18,19 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Countdown capsule hides and timer stops correctly when the countdown reaches zero.
 - Duplicate version entry in the default `autosaver.ini` template corrected.
-
-## [1.3.6] - 2026-05-07
-
-### Added
-- **Countdown capsule** — title bar now shows a pill displaying time until the next auto-save, hiding when idle.
-
-### Changed
-- List item selection style changed from solid fill to accent-colored border highlight.
-- Main window and dialogs now use rounded corners throughout.
-
-### Fixed
-- Version number is now correctly written into `autosaver.ini` `[meta]` on first run (was missing / duplicated).
-- Countdown capsule hides and timer stops when the countdown reaches zero.
 
 ## [1.3.5] - 2026-05-06
 
