@@ -72,13 +72,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: autosaver-${{ steps.version.outputs.value }}-packages
+          if-no-files-found: warn
           path: |
             bin/Release/autosaver.exe
             dist/AutoSaver-${{ steps.version.outputs.value }}-Setup.exe
             dist/AutoSaver-${{ steps.version.outputs.value }}-Portal.zip
 
       - name: Extract release notes
-        id: release_notes
         shell: pwsh
         run: |
           $version = '${{ steps.version.outputs.value }}'
@@ -90,6 +90,29 @@ jobs:
           }
           Set-Content -Path release-notes.md -Value $body -Encoding UTF8
 
+      - name: Collect release assets (existing paths only)
+        id: release_assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.version.outputs.value }}'
+          $candidates = @(
+            "bin/Release/autosaver.exe",
+            "dist/AutoSaver-$ver-Setup.exe",
+            "dist/AutoSaver-$ver-Portal.zip"
+          )
+          $existing = [System.Collections.Generic.List[string]]::new()
+          foreach ($p in $candidates) {
+            if (Test-Path -LiteralPath $p) {
+              $existing.Add($p)
+            } else {
+              Write-Warning "Release asset missing, will not attach: $p"
+            }
+          }
+          $block = ($existing -join "`n").TrimEnd()
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "paths<<EOF"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value $block
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "EOF"
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -97,9 +120,7 @@ jobs:
         with:
           name: AutoSaver ${{ steps.version.outputs.value }}
           body_path: release-notes.md
-          files: |
-            bin/Release/autosaver.exe
-            dist/AutoSaver-${{ steps.version.outputs.value }}-Setup.exe
-            dist/AutoSaver-${{ steps.version.outputs.value }}-Portal.zip
+          fail_on_unmatched_files: false
+          files: ${{ steps.release_assets.outputs.paths }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
