@@ -391,6 +391,17 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
+    <!-- Countdown Overlay -->
+    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#DDE3EA"/>
+    <SolidColorBrush x:Key="CountdownOverlayText" Color="#111827"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#D1FAE5"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#10B981"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessText" Color="#059669"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#FEE2E2"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#F87171"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailText" Color="#DC2626"/>
+
     <!-- Separator -->
     <Style TargetType="Separator">
         <Setter Property="Background" Value="{DynamicResource DividerColor}"/>
