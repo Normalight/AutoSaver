@@ -118,6 +118,14 @@
       <DependentUpon>NotificationOverlay.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Views\CountdownOverlay.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\CountdownOverlay.xaml.cs">
+      <DependentUpon>CountdownOverlay.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <EmbeddedResource Include="Resources\app-icon.png" />
     <EmbeddedResource Include="Resources\autosaver.default.ini" />
     <Content Include="Resources\app-icon.ico">
