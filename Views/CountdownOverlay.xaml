@@ -14,17 +14,23 @@
         <Border.Effect>
             <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.2"/>
         </Border.Effect>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Path Data="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
-                  Stroke="{DynamicResource CountdownOverlayText}" StrokeThickness="1.4"
-                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                  Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center"
-                  Margin="0,0,6,0" Opacity="0.6"/>
-            <TextBlock x:Name="CountdownText"
-                       Text="30s"
-                       FontSize="13" FontWeight="SemiBold"
-                       Foreground="{DynamicResource CountdownOverlayText}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </StackPanel>
+        <Grid>
+            <!-- Color flash layer (behind text) -->
+            <Border x:Name="FlashLayer" CornerRadius="8" Background="Transparent"
+                    Opacity="0" IsHitTestVisible="False"/>
+            <StackPanel x:Name="ContentPanel" Orientation="Horizontal"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Data="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
+                      Stroke="{DynamicResource CountdownOverlayText}" StrokeThickness="1.4"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center"
+                      Margin="0,0,6,0" Opacity="0.6"/>
+                <TextBlock x:Name="CountdownText"
+                           Text="30s"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource CountdownOverlayText}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
     </Border>
 </Window>

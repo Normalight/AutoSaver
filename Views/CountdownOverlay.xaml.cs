@@ -56,18 +56,40 @@ namespace AutoSaver.Views
 
             CountdownText.Text = success ? "✓" : "✕";
             CountdownText.Foreground = TryFindResource(success ? "CountdownOverlaySuccessText" : "CountdownOverlayFailText") as Brush;
-            CapsuleBorder.Background = TryFindResource(success ? "CountdownOverlaySuccessBg" : "CountdownOverlayFailBg") as Brush;
-            CapsuleBorder.BorderBrush = TryFindResource(success ? "CountdownOverlaySuccessBorder" : "CountdownOverlayFailBorder") as Brush;
 
+            // Flash the inner layer, not the outer border (avoids shadow/transform artifacts)
+            var flashBrush = TryFindResource(success ? "CountdownOverlaySuccessBg" : "CountdownOverlayFailBg") as Brush;
+            FlashLayer.Background = flashBrush;
+            var flashIn = new DoubleAnimation(0, 0.6, TimeSpan.FromMilliseconds(150))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            var flashOut = new DoubleAnimation(0.6, 0, TimeSpan.FromMilliseconds(400))
+            {
+                BeginTime = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            FlashLayer.BeginAnimation(OpacityProperty, null);
+            var opacityAnimation = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(800) };
+            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0.6, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150)))
+                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800)))
+                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+            FlashLayer.BeginAnimation(OpacityProperty, opacityAnimation);
+
+            // Subtle text scale only (no border transform)
+            ContentPanel.RenderTransformOrigin = new Point(0.5, 0.5);
             if (success)
             {
-                CapsuleBorder.RenderTransformOrigin = new Point(0.5, 0.5);
                 var scale = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(400) };
                 scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.15, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150))) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(400))) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(400)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
                 var transform = new ScaleTransform(1, 1);
-                CapsuleBorder.RenderTransform = transform;
+                ContentPanel.RenderTransform = transform;
                 transform.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
                 transform.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
             }
@@ -75,12 +97,12 @@ namespace AutoSaver.Views
             {
                 var shake = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(300) };
                 shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(3, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(50))));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(-3, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(100))));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(3, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150))));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(200))));
+                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(60))));
+                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(-2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120))));
+                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(180))));
+                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(240))));
                 var transform = new TranslateTransform(0, 0);
-                CapsuleBorder.RenderTransform = transform;
+                ContentPanel.RenderTransform = transform;
                 transform.BeginAnimation(TranslateTransform.XProperty, shake);
             }
 
@@ -97,9 +119,10 @@ namespace AutoSaver.Views
         private void ResetVisuals()
         {
             CountdownText.Foreground = TryFindResource("CountdownOverlayText") as Brush;
-            CapsuleBorder.Background = TryFindResource("CountdownOverlayBg") as Brush;
-            CapsuleBorder.BorderBrush = TryFindResource("CountdownOverlayBorder") as Brush;
-            CapsuleBorder.RenderTransform = null;
+            FlashLayer.Background = Brushes.Transparent;
+            FlashLayer.BeginAnimation(OpacityProperty, null);
+            FlashLayer.Opacity = 0;
+            ContentPanel.RenderTransform = null;
         }
 
         public void ShowAnimated()
