@@ -26,8 +26,7 @@ namespace AutoSaver
         private List<ProgramItem> _programs;
         private MainWindow _mainWindow;
         private NotificationOverlay _notification;
-        private readonly Queue<SaveResult> _notificationQueue = new Queue<SaveResult>();
-        private bool _notificationShowing;
+        private CountdownOverlay _countdownOverlay;
         private string _logPath;
         private string _iconTempPath;
         private UpdateCheckResult _lastUpdateCheckResult;
@@ -109,6 +108,11 @@ namespace AutoSaver
 
             _scheduler.SetInterval(ConfigService.CheckIntervalSec);
             _scheduler.Start();
+
+            if (ConfigService.ShowCountdownOverlay)
+            {
+                _countdownOverlay = new CountdownOverlay();
+            }
 
             SetupTray();
             ShowMainWindow();
@@ -251,39 +255,18 @@ namespace AutoSaver
             if (_notification == null)
             {
                 _notification = new NotificationOverlay();
-                _notification.Hidden += OnNotificationHidden;
+                _notification.PersistentClosed += OnPersistentClosed;
             }
 
-            var type = result.Status switch
-            {
-                SaveStatus.Success => NotificationType.Success,
-                SaveStatus.NeedsConfirm => NotificationType.NeedsConfirm,
-                SaveStatus.Failed => NotificationType.Failed,
-                _ => NotificationType.Success
-            };
+            var type = result.Status == SaveStatus.Success
+                ? NotificationType.Success
+                : NotificationType.Failed;
 
-            _notificationShowing = true;
-            _notification.Show(result.Program.Name, result.Message, type, result.JumpAction);
+            _notification.Push(result.Program.Name, result.Message, type, result.IsPersistentAlert, result.Program.Id);
         }
 
-        private void OnNotificationHidden()
+        private void OnPersistentClosed(string programId)
         {
-            _notificationShowing = false;
-            TryShowNextNotification();
-        }
-
-        private void TryShowNextNotification()
-        {
-            if (_notificationShowing) return;
-            if (_notificationQueue.Count == 0) return;
-
-            ShowNotification(_notificationQueue.Dequeue());
-        }
-
-        private void EnqueueNotification(SaveResult result)
-        {
-            _notificationQueue.Enqueue(result);
-            TryShowNextNotification();
         }
 
         private void ShowSettings()
@@ -306,6 +289,17 @@ namespace AutoSaver
             foreach (var p in _programs)
                 p.SaveIntervalSec = sec;
             ConfigService.SavePrograms(_programs);
+
+            if (ConfigService.ShowCountdownOverlay && _countdownOverlay == null)
+            {
+                _countdownOverlay = new CountdownOverlay();
+            }
+            else if (!ConfigService.ShowCountdownOverlay && _countdownOverlay != null)
+            {
+                _countdownOverlay.Close();
+                _countdownOverlay = null;
+            }
+
             Log("Settings updated");
         }
 
@@ -469,13 +463,53 @@ namespace AutoSaver
 
         private void OnSaveCompleted(SaveResult result)
         {
-            if (!ConfigService.ShowNotifications) return;
-            Dispatcher.Invoke(() => EnqueueNotification(result));
+            Dispatcher.Invoke(() =>
+            {
+                if (result.Status == SaveStatus.Success)
+                    _countdownOverlay?.PlaySaveAnimation(true);
+                else
+                    _countdownOverlay?.PlaySaveAnimation(false);
+
+                if (!ConfigService.ShowNotifications) return;
+
+                if (_notification == null)
+                {
+                    _notification = new NotificationOverlay();
+                    _notification.PersistentClosed += OnPersistentClosed;
+                }
+
+                var type = result.Status == SaveStatus.Success
+                    ? NotificationType.Success
+                    : NotificationType.Failed;
+
+                _notification.Push(result.Program.Name, result.Message, type, result.IsPersistentAlert, result.Program.Id);
+            });
         }
 
         private void OnFocusCountdown(FocusCountdownSnapshot snap)
         {
-            void Apply() => _mainWindow?.UpdateFocusCountdown(snap);
+            void Apply()
+            {
+                if (_countdownOverlay == null) return;
+                if (!ConfigService.ShowCountdownOverlay)
+                {
+                    if (_countdownOverlay.IsVisible)
+                        _countdownOverlay.HideAnimated();
+                    return;
+                }
+
+                if (!snap.ShowCapsule)
+                {
+                    if (_countdownOverlay.IsVisible)
+                        _countdownOverlay.HideAnimated();
+                    return;
+                }
+
+                _countdownOverlay.UpdateCountdown(snap.RemainingSec, snap.IntervalSec);
+                if (!_countdownOverlay.IsVisible)
+                    _countdownOverlay.ShowAnimated();
+            }
+
             if (Dispatcher.CheckAccess())
                 Apply();
             else
@@ -519,6 +553,7 @@ namespace AutoSaver
         private void QuitApp()
         {
             Log("AutoSaver exiting");
+            _countdownOverlay?.Close();
             _scheduler.StopAll();
             _tray.Visible = false;
             _tray.Dispose();
