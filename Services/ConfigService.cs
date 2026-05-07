@@ -342,27 +342,12 @@ namespace AutoSaver.Services
                     Name = Read($"program.{i}", "name"),
                     Exe = Read($"program.{i}", "exe"),
                     Enabled = Read($"program.{i}", "enabled", "true") == "true",
-                    SaveIntervalSec = int.TryParse(Read($"program.{i}", "save_interval_sec", "300"), out var iv) ? iv : 300
+                    SaveIntervalSec = CheckIntervalSec
                 });
             }
 
             var deduped = DeduplicateProgramsByExe(programs);
             if (deduped.Count != programs.Count)
-                SavePrograms(deduped);
-
-            // 保存间隔以全局 check_interval_sec 为准，与各 program 节同步，避免单独残留旧值。
-            var globalIv = CheckIntervalSec;
-            var syncDirty = false;
-            foreach (var p in deduped)
-            {
-                if (p.SaveIntervalSec != globalIv)
-                {
-                    p.SaveIntervalSec = globalIv;
-                    syncDirty = true;
-                }
-            }
-
-            if (syncDirty)
                 SavePrograms(deduped);
 
             return deduped;
@@ -397,7 +382,7 @@ namespace AutoSaver.Services
                 Write(section, "name", p.Name);
                 Write(section, "exe", p.Exe);
                 Write(section, "enabled", p.Enabled ? "true" : "false");
-                Write(section, "save_interval_sec", p.SaveIntervalSec.ToString());
+                Write(section, "save_interval_sec", CheckIntervalSec.ToString());
             }
 
             // Clean up stale sections beyond the current count

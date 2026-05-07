@@ -57,8 +57,10 @@ namespace AutoSaver.Services
     }
 
     /// <summary>
-    /// 全局单一倒计时：不因切换窗口或更换前台监控程序而重置；仅在前台不在白名单时暂停递减；
-    /// 主窗口关闭仅留托盘时仍保持 Timer 运行（自动保存继续）；退出进程时 <see cref="StopAll"/> 清空。
+    /// 每秒一次的定时器驱动调度；保存周期仅使用全局检查间隔（<c>check_interval_sec</c>）。
+    /// 每个前台匹配的顶层 HWND 各自在内存中维护剩余倒计时（不写磁盘；进程退出后清空）。
+    /// 切换到其它窗口时该 HWND 的倒计时暂停在原值；回到该窗口后继续递减。
+    /// 主窗口关闭仅留托盘时定时器仍运行；退出进程时 <see cref="StopAll"/> 清空。
     /// </summary>
     public class SaveScheduler
     {
@@ -70,10 +72,15 @@ namespace AutoSaver.Services
         private int _globalIntervalSec = 30;
         private int _tickGate;
 
-        private IntPtr _slotHwnd = IntPtr.Zero;
-        private string _slotProgramId;
-        private int _slotRemainingSec;
+        /// <summary>每个顶层窗口 HWND 一条倒计时状态（仅内存，不落盘）。</summary>
+        private readonly Dictionary<IntPtr, HwndSlot> _hwndSlots = new Dictionary<IntPtr, HwndSlot>();
         private readonly Dictionary<string, int> _consecutiveFailures = new Dictionary<string, int>();
+
+        private sealed class HwndSlot
+        {
+            public string ProgramId;
+            public int RemainingSec;
+        }
 
         public event Action<string, string, int> SaveDone;
         public event Action<SaveResult> SaveCompleted;
@@ -110,11 +117,16 @@ namespace AutoSaver.Services
             _globalIntervalSec = Math.Max(1, seconds);
             lock (_lock)
             {
-                if (!string.IsNullOrEmpty(_slotProgramId))
+                foreach (var kv in _hwndSlots.ToList())
                 {
-                    var st = FindProgramUnlocked(_slotProgramId);
-                    if (st != null)
-                        _slotRemainingSec = EffectiveInterval();
+                    var st = FindProgramUnlocked(kv.Value.ProgramId);
+                    if (st == null)
+                    {
+                        _hwndSlots.Remove(kv.Key);
+                        continue;
+                    }
+
+                    kv.Value.RemainingSec = EffectiveInterval();
                 }
             }
         }
@@ -135,8 +147,7 @@ namespace AutoSaver.Services
             lock (_lock)
             {
                 _programs.RemoveAll(p => p.Program.Id == programId);
-                if (_slotProgramId == programId)
-                    ClearSlotUnlocked();
+                RemoveSlotsForProgramUnlocked(programId);
             }
 
             WindowService.InvalidatePidSnapshot();
@@ -152,8 +163,7 @@ namespace AutoSaver.Services
                 else
                     _programs.Add(new ProgramState { Program = prog });
 
-                if (_slotProgramId == prog.Id)
-                    _slotRemainingSec = EffectiveInterval();
+                RemoveSlotsForProgramUnlocked(prog.Id);
             }
 
             WindowService.InvalidatePidSnapshot();
@@ -165,7 +175,7 @@ namespace AutoSaver.Services
             {
                 StopInternal();
                 _programs.Clear();
-                ClearSlotUnlocked();
+                _hwndSlots.Clear();
             }
 
             WindowService.InvalidatePidSnapshot();
@@ -181,14 +191,21 @@ namespace AutoSaver.Services
             }
         }
 
-        private void ClearSlotUnlocked()
+        private void RemoveSlotsForProgramUnlocked(string programId)
         {
-            _slotHwnd = IntPtr.Zero;
-            _slotProgramId = null;
-            _slotRemainingSec = 0;
+            var dead = _hwndSlots.Where(kv => kv.Value.ProgramId == programId).Select(kv => kv.Key).ToList();
+            foreach (var h in dead)
+                _hwndSlots.Remove(h);
         }
 
-        /// <summary>保存/倒计时周期仅使用全局设置（<c>check_interval_sec</c>），不再按程序单独间隔。</summary>
+        private void PruneStaleSlotsUnlocked()
+        {
+            var dead = _hwndSlots.Keys.Where(h => !WindowService.IsWindowAlive(h)).ToList();
+            foreach (var h in dead)
+                _hwndSlots.Remove(h);
+        }
+
+        /// <summary>与设置中的全局检查间隔一致。</summary>
         private int EffectiveInterval()
         {
             return Math.Max(1, _globalIntervalSec);
@@ -221,6 +238,9 @@ namespace AutoSaver.Services
 
             try
             {
+                lock (_lock)
+                    PruneStaleSlotsUnlocked();
+
                 if (!WindowService.TryGetForegroundProcess(out var fgHwnd, out _, out var exePath))
                 {
                     RaiseUiTick(IntPtr.Zero, null);
@@ -247,19 +267,22 @@ namespace AutoSaver.Services
 
                 lock (_lock)
                 {
-                    _slotHwnd = fgHwnd;
-                    _slotProgramId = match.Id;
+                    if (!_hwndSlots.TryGetValue(fgHwnd, out var slot) || slot.ProgramId != match.Id)
+                        slot = new HwndSlot { ProgramId = match.Id, RemainingSec = 0 };
 
-                    if (_slotRemainingSec <= 0)
-                        _slotRemainingSec = EffectiveInterval();
+                    if (slot.RemainingSec <= 0)
+                        slot.RemainingSec = EffectiveInterval();
                     else
-                        _slotRemainingSec--;
-
-                    if (_slotRemainingSec == 0)
                     {
-                        AddSave(toSave, match, fgHwnd);
-                        _slotRemainingSec = EffectiveInterval();
+                        slot.RemainingSec--;
+                        if (slot.RemainingSec == 0)
+                        {
+                            AddSave(toSave, match, fgHwnd);
+                            slot.RemainingSec = EffectiveInterval();
+                        }
                     }
+
+                    _hwndSlots[fgHwnd] = slot;
                 }
 
                 RaiseUiTick(fgHwnd, match);
@@ -295,8 +318,11 @@ namespace AutoSaver.Services
 
         private FocusCountdownSnapshot BuildCapsuleUnsafe(IntPtr fgHwnd, ProgramItem foregroundMatch)
         {
-            if (fgHwnd == IntPtr.Zero || foregroundMatch == null ||
-                _slotHwnd != fgHwnd || _slotProgramId != foregroundMatch.Id)
+            if (fgHwnd == IntPtr.Zero || foregroundMatch == null)
+                return new FocusCountdownSnapshot(false, "", 0, 0);
+
+            if (!_hwndSlots.TryGetValue(fgHwnd, out var slot) ||
+                !string.Equals(slot.ProgramId, foregroundMatch.Id, StringComparison.Ordinal))
                 return new FocusCountdownSnapshot(false, "", 0, 0);
 
             var iv = EffectiveInterval();
@@ -305,21 +331,26 @@ namespace AutoSaver.Services
             var label = string.IsNullOrWhiteSpace(title)
                 ? titleStem
                 : $"{titleStem} · {title}";
-            return new FocusCountdownSnapshot(true, label, _slotRemainingSec, iv);
+            return new FocusCountdownSnapshot(true, label, slot.RemainingSec, iv);
         }
 
         private List<ProgramListRow> BuildProgramListRowsUnlocked(IntPtr fgHwnd, ProgramItem foregroundMatch)
         {
             var list = new List<ProgramListRow>(_programs.Count);
-            foreach (var s in _programs.OrderBy(x => x.Program.Id, StringComparer.Ordinal))
+            HwndSlot fgSlot = null;
+            if (fgHwnd != IntPtr.Zero && foregroundMatch != null &&
+                _hwndSlots.TryGetValue(fgHwnd, out var s) &&
+                string.Equals(s.ProgramId, foregroundMatch.Id, StringComparison.Ordinal))
+                fgSlot = s;
+
+            foreach (var st in _programs.OrderBy(x => x.Program.Id, StringComparer.Ordinal))
             {
-                var prog = s.Program;
+                var prog = st.Program;
                 var iv = EffectiveInterval();
                 var isTarget = prog.Enabled && foregroundMatch != null &&
                                string.Equals(prog.Id, foregroundMatch.Id, StringComparison.Ordinal) &&
-                               fgHwnd != IntPtr.Zero && _slotHwnd == fgHwnd &&
-                               string.Equals(_slotProgramId, prog.Id, StringComparison.Ordinal);
-                var rem = isTarget ? _slotRemainingSec : 0;
+                               fgSlot != null;
+                var rem = isTarget ? fgSlot.RemainingSec : 0;
                 list.Add(new ProgramListRow(prog.Id, isTarget, rem, iv));
             }
 

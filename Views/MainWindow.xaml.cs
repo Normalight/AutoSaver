@@ -51,7 +51,7 @@ namespace AutoSaver.Views
             {
                 if (!rowById.TryGetValue(p.Id, out var tickRow))
                 {
-                    var iv = p.SaveIntervalSec > 0 ? p.SaveIntervalSec : ConfigService.CheckIntervalSec;
+                    var iv = ConfigService.CheckIntervalSec;
                     tickRow = new ProgramListRow(p.Id, false, 0, iv);
                 }
 
