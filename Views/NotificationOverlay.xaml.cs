@@ -1,120 +1,243 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace AutoSaver.Views
 {
-    public enum NotificationType { Success, NeedsConfirm, Failed }
+    public enum NotificationType { Success, Failed }
 
     public partial class NotificationOverlay : Window
     {
-        private readonly DispatcherTimer _autoHideTimer;
-        private Action _onJump;
+        private const int MaxVisible = 3;
+        private const int GWL_EX_STYLE = -20;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
 
-        /// <summary>Raised after the toast has finished hiding.</summary>
-        public event Action Hidden;
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        public event Action<string> PersistentClosed;
 
         public NotificationOverlay()
         {
             InitializeComponent();
-            _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
-            _autoHideTimer.Tick += (s, e) => { _autoHideTimer.Stop(); HideAnimated(); };
+            Loaded += OnLoaded;
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         }
 
-        public void Show(string programName, string detail, NotificationType type, Action onJump = null)
+        private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            _onJump = onJump;
-            _autoHideTimer.Stop();
-
-            // Set content
-            TitleText.Text = $"{programName}";
-            DetailText.Text = detail;
-
-            switch (type)
-            {
-                case NotificationType.Success:
-                    StatusBar.Background = ThemeBrush("SuccessColor", 0x34, 0xD3, 0x99);
-                    TitleText.Text = $"✓ {programName}";
-                    TitleText.Foreground = ThemeBrush("SuccessColor", 0x34, 0xD3, 0x99);
-                    JumpButton.Visibility = Visibility.Collapsed;
-                    CloseButton.Visibility = Visibility.Collapsed;
-                    _autoHideTimer.Start();
-                    break;
-
-                case NotificationType.NeedsConfirm:
-                    StatusBar.Background = ThemeBrush("WarningColor", 0xFB, 0xBF, 0x24);
-                    TitleText.Text = $"⚠ {programName}";
-                    TitleText.Foreground = ThemeBrush("WarningColor", 0xFB, 0xBF, 0x24);
-                    DetailText.Text = detail;
-                    JumpButton.Visibility = onJump != null ? Visibility.Visible : Visibility.Collapsed;
-                    CloseButton.Visibility = Visibility.Visible;
-                    break;
-
-                case NotificationType.Failed:
-                    StatusBar.Background = ThemeBrush("DangerColor", 0xF8, 0x71, 0x71);
-                    TitleText.Text = $"✕ {programName}";
-                    TitleText.Foreground = ThemeBrush("DangerColor", 0xF8, 0x71, 0x71);
-                    DetailText.Text = detail;
-                    JumpButton.Visibility = Visibility.Collapsed;
-                    CloseButton.Visibility = Visibility.Visible;
-                    break;
-            }
-
-            Show();
-            Activate();
-            SlideIn();
+            var hwnd = new WindowInteropHelper(this).Handle;
+            var exStyle = GetWindowLong(hwnd, GWL_EX_STYLE);
+            SetWindowLong(hwnd, GWL_EX_STYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+            PositionWindow();
         }
 
-        private Brush ThemeBrush(string resourceKey, byte r, byte g, byte b)
+        private void OnDisplaySettingsChanged(object sender, EventArgs e)
         {
-            return TryFindResource(resourceKey) as Brush ?? new SolidColorBrush(Color.FromRgb(r, g, b));
+            Dispatcher.BeginInvoke(new Action(PositionWindow));
         }
 
-        private void SlideIn()
+        private void PositionWindow()
         {
-            // Use WPF SystemParameters (logical pixels) to avoid DPI mismatch with
-            // Screen.WorkingArea which returns physical pixels.
             var workArea = SystemParameters.WorkArea;
             Left = workArea.Left + (workArea.Width - Width) / 2;
-            Top = -Height;
+            Top = workArea.Top + 10;
+        }
 
-            var anim = new DoubleAnimation(workArea.Top + 10, TimeSpan.FromMilliseconds(300))
+        public void Push(string programName, string detail, NotificationType type, bool isPersistent = false, string programId = null)
+        {
+            TrimExcess();
+
+            var entry = CreateEntry(programName, detail, type, isPersistent, programId);
+            NotificationStack.Children.Insert(0, entry);
+
+            if (!IsVisible)
+            {
+                Show();
+                PositionWindow();
+            }
+
+            AnimateSlideIn(entry);
+
+            if (!isPersistent)
+            {
+                var autoHide = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+                autoHide.Tick += (s, e) =>
+                {
+                    autoHide.Stop();
+                    RemoveEntry(entry);
+                };
+                autoHide.Start();
+            }
+        }
+
+        private void TrimExcess()
+        {
+            while (NotificationStack.Children.Count >= MaxVisible)
+            {
+                var last = NotificationStack.Children[NotificationStack.Children.Count - 1];
+                AnimateSlideOut((FrameworkElement)last, remove: true);
+            }
+        }
+
+        private Border CreateEntry(string programName, string detail, NotificationType type, bool isPersistent, string programId)
+        {
+            Brush accentBrush;
+            string titleText;
+            Brush titleBrush;
+
+            if (type == NotificationType.Failed)
+            {
+                accentBrush = TryFindResource("DangerColor") as Brush ?? Brushes.Red;
+                titleText = $"⚠ {programName}";
+                titleBrush = TryFindResource("DangerColor") as Brush ?? Brushes.Red;
+            }
+            else
+            {
+                accentBrush = TryFindResource("SuccessColor") as Brush ?? Brushes.Green;
+                titleText = $"✓ {programName}";
+                titleBrush = TryFindResource("SuccessColor") as Brush ?? Brushes.Green;
+            }
+
+            var entry = new Border
+            {
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(14, 8, 14, 8),
+                Margin = new Thickness(0, 0, 0, 8),
+                Background = TryFindResource("BgSecondary") as Brush,
+                BorderBrush = TryFindResource("BorderColor") as Brush,
+                BorderThickness = new Thickness(1),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    BlurRadius = 12,
+                    ShadowDepth = 2,
+                    Opacity = 0.3
+                }
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var statusBar = new Border
+            {
+                Width = 4,
+                CornerRadius = new CornerRadius(2),
+                Margin = new Thickness(-14, 8, 10, 8),
+                Background = accentBrush
+            };
+            Grid.SetColumn(statusBar, 0);
+            grid.Children.Add(statusBar);
+
+            var stackPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 8, 0) };
+            var title = new TextBlock
+            {
+                Text = titleText,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = titleBrush,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            var detailBlock = new TextBlock
+            {
+                Text = detail,
+                FontSize = 12,
+                Foreground = TryFindResource("TextSecondary") as Brush,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            stackPanel.Children.Add(title);
+            stackPanel.Children.Add(detailBlock);
+            Grid.SetColumn(stackPanel, 1);
+            grid.Children.Add(stackPanel);
+
+            if (isPersistent)
+            {
+                var closeBtn = new Button
+                {
+                    Content = "✕",
+                    Height = 28,
+                    Width = 28,
+                    FontSize = 14,
+                    Padding = new Thickness(0),
+                    Cursor = Cursors.Hand
+                };
+                closeBtn.SetValue(FrameworkElement.StyleProperty, TryFindResource("GhostButton") as Style);
+                closeBtn.Click += (s, e) =>
+                {
+                    if (programId != null)
+                        PersistentClosed?.Invoke(programId);
+                    RemoveEntry(entry);
+                };
+                Grid.SetColumn(closeBtn, 2);
+                grid.Children.Add(closeBtn);
+            }
+
+            entry.Child = grid;
+            return entry;
+        }
+
+        private void AnimateSlideIn(FrameworkElement entry)
+        {
+            entry.Opacity = 0;
+            var transform = new TranslateTransform(0, -30);
+            entry.RenderTransform = transform;
+
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            anim.Completed += (s, e) => Top = workArea.Top + 10;
-            BeginAnimation(TopProperty, anim);
+            var slideDown = new DoubleAnimation(-30, 0, TimeSpan.FromMilliseconds(250))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            entry.BeginAnimation(OpacityProperty, fadeIn);
+            transform.BeginAnimation(TranslateTransform.YProperty, slideDown);
         }
 
-        private void HideAnimated()
+        private void RemoveEntry(FrameworkElement entry)
         {
-            var anim = new DoubleAnimation(-Height, TimeSpan.FromMilliseconds(250))
+            AnimateSlideOut(entry, remove: true);
+        }
+
+        private void AnimateSlideOut(FrameworkElement entry, bool remove)
+        {
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
-            anim.Completed += (s, e) =>
+            var slideUp = new DoubleAnimation(0, -20, TimeSpan.FromMilliseconds(200))
             {
-                Hide();
-                _onJump = null;
-                Hidden?.Invoke();
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
-            BeginAnimation(TopProperty, anim);
+
+            fadeOut.Completed += (s, e) =>
+            {
+                if (remove)
+                    NotificationStack.Children.Remove(entry);
+                if (NotificationStack.Children.Count == 0)
+                    Hide();
+            };
+
+            entry.RenderTransform = new TranslateTransform(0, 0);
+            entry.BeginAnimation(OpacityProperty, fadeOut);
+            ((TranslateTransform)entry.RenderTransform).BeginAnimation(TranslateTransform.YProperty, slideUp);
         }
 
-        private void OnJumpClick(object sender, RoutedEventArgs e)
+        protected override void OnClosed(EventArgs e)
         {
-            _autoHideTimer.Stop();
-            var jump = _onJump;
-            HideAnimated();
-            jump?.Invoke();
-        }
-
-        private void OnCloseClick(object sender, RoutedEventArgs e)
-        {
-            _autoHideTimer.Stop();
-            HideAnimated();
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            base.OnClosed(e);
         }
     }
 }
