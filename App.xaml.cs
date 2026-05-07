@@ -250,31 +250,16 @@ namespace AutoSaver
             _scheduler.SetTrayPaused(false);
         }
 
-        private void ShowNotification(SaveResult result)
-        {
-            if (_notification == null)
-            {
-                _notification = new NotificationOverlay();
-                _notification.PersistentClosed += OnPersistentClosed;
-            }
-
-            var type = result.Status == SaveStatus.Success
-                ? NotificationType.Success
-                : NotificationType.Failed;
-
-            _notification.Push(result.Program.Name, result.Message, type, result.IsPersistentAlert, result.Program.Id);
-        }
-
-        private void OnPersistentClosed(string programId)
-        {
-        }
-
         private void ShowSettings()
         {
             var dlg = new SettingsDialog();
             dlg.Owner = _mainWindow; // may be null, that's fine
             if (dlg.ShowDialog() == true)
                 ApplySavedSettings();
+        }
+
+        private void OnPersistentClosed(string programId)
+        {
         }
 
         private void OnMainWindowSettingsSaved()

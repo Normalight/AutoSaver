@@ -5,6 +5,20 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-07
+
+### Added
+- **悬浮倒计时胶囊**：独立置顶悬浮窗，仅在前台窗口匹配白名单程序时显示。可拖拽、自动记忆位置、多显示器/DPI 适配。保存成功/失败时播放动画（绿色弹跳/红色抖动）。设置中可开关。
+- **推送式通知堆叠**：多条通知同时显示（最多 3 条），新的从顶部滑入将旧的向下推移。成功/失败均 3 秒自动消失。
+- **连续失败持久提醒**：同一程序连续保存失败达到阈值（默认 3 次）后弹出持久通知，需手动关闭。
+- **设置新增项**：悬浮窗显示开关、保存动画开关、连续失败阈值。
+
+### Changed
+- **移除保存结果检测**：不再对比窗口数量判断保存对话框，发送 Ctrl+S 后即视为完成。
+
+### Removed
+- **主窗口内嵌倒计时胶囊**：标题栏的倒计时显示已移除，由独立悬浮窗替代。
+
 ## [1.5.17] - 2026-05-06
 
 ### Fixed
