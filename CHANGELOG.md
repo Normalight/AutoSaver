@@ -5,6 +5,14 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-05-07
+
+### Changed
+- **倒计时悬浮窗**：升级为更克制的玻璃感样式，增加高光、柔和描边和主题化图标色，降低圆角与阴影边缘的视觉瑕疵。
+
+### Fixed
+- **悬浮窗显示动画**：显示时等待首轮渲染并清理残留透明度动画，避免淡入动画前段被截断或显示不完整。
+
 ## [1.6.0] - 2026-05-07
 
 ### Added

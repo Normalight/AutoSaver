@@ -57,34 +57,24 @@ namespace AutoSaver.Views
             CountdownText.Text = success ? "✓" : "✕";
             CountdownText.Foreground = TryFindResource(success ? "CountdownOverlaySuccessText" : "CountdownOverlayFailText") as Brush;
 
-            // Flash the inner layer, not the outer border (avoids shadow/transform artifacts)
             var flashBrush = TryFindResource(success ? "CountdownOverlaySuccessBg" : "CountdownOverlayFailBg") as Brush;
             FlashLayer.Background = flashBrush;
-            var flashIn = new DoubleAnimation(0, 0.6, TimeSpan.FromMilliseconds(150))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            var flashOut = new DoubleAnimation(0.6, 0, TimeSpan.FromMilliseconds(400))
-            {
-                BeginTime = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
             FlashLayer.BeginAnimation(OpacityProperty, null);
+
             var opacityAnimation = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(800) };
             opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0.6, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150)))
+            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0.58, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150)))
                 { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800)))
                 { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
             FlashLayer.BeginAnimation(OpacityProperty, opacityAnimation);
 
-            // Subtle text scale only (no border transform)
             ContentPanel.RenderTransformOrigin = new Point(0.5, 0.5);
             if (success)
             {
                 var scale = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(400) };
                 scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)))
+                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.18, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)))
                     { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
                 scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(400)))
                     { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
@@ -128,12 +118,16 @@ namespace AutoSaver.Views
         public void ShowAnimated()
         {
             Show();
-            Opacity = 0;
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200))
+            Dispatcher.BeginInvoke(new Action(() =>
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            BeginAnimation(OpacityProperty, fadeIn);
+                BeginAnimation(OpacityProperty, null);
+                Opacity = 0;
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                BeginAnimation(OpacityProperty, fadeIn);
+            }), DispatcherPriority.Render);
         }
 
         public void HideAnimated()

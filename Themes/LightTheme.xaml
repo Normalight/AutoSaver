@@ -392,15 +392,18 @@
     </Style>
 
     <!-- Countdown Overlay -->
-    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#D1D5DB"/>
-    <SolidColorBrush x:Key="CountdownOverlayText" Color="#374151"/>
-    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#D1FAE5"/>
+    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#EAF8FAFC"/>
+    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#99CBD5E1"/>
+    <SolidColorBrush x:Key="CountdownOverlayHighlight" Color="#CCFFFFFF"/>
+    <SolidColorBrush x:Key="CountdownOverlayShadow" Color="#330F172A"/>
+    <SolidColorBrush x:Key="CountdownOverlayText" Color="#243041"/>
+    <SolidColorBrush x:Key="CountdownOverlayIcon" Color="#6B7280"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#CCDCFCE7"/>
     <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#10B981"/>
-    <SolidColorBrush x:Key="CountdownOverlaySuccessText" Color="#059669"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#FEE2E2"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#F87171"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailText" Color="#DC2626"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessText" Color="#047857"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#CCFEE2E2"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#EF4444"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailText" Color="#B91C1C"/>
 
     <!-- Separator -->
     <Style TargetType="Separator">
