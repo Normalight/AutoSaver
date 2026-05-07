@@ -5,6 +5,12 @@ All notable changes to AutoSaver are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-05-07
+
+### Changed
+- **倒计时调度**：每个前台顶层窗口独立维护内存倒计时，切换到其它窗口时暂停，切回后继续原窗口倒计时。
+- **保存间隔**：程序配置中的 `save_interval_sec` 始终跟随全局 `check_interval_sec`，避免旧的单程序间隔影响显示或保存节奏。
+
 ## [1.6.2] - 2026-05-07
 
 ### Changed
