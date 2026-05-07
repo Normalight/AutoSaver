@@ -349,15 +349,15 @@ namespace AutoSaver.Services
         {
             var progRef = prog;
             var hwndRef = expectedHwnd;
-            Task.Run(async () =>
+            Task.Run(() =>
             {
                 try
                 {
-                    await RunSaveWindowAsync(progRef, hwndRef).ConfigureAwait(false);
+                    RunSaveWindow(progRef, hwndRef);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"SaveScheduler.RunSaveWindowAsync failed for {progRef.Name}: {ex.Message}");
+                    Debug.WriteLine($"SaveScheduler.RunSaveWindow failed for {progRef.Name}: {ex.Message}");
                     SaveCompleted?.Invoke(new SaveResult
                     {
                         Program = progRef,
@@ -369,7 +369,7 @@ namespace AutoSaver.Services
             });
         }
 
-        private async Task RunSaveWindowAsync(ProgramItem prog, IntPtr expectedHwnd)
+        private void RunSaveWindow(ProgramItem prog, IntPtr expectedHwnd)
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
 
