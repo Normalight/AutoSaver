@@ -392,18 +392,27 @@
     </Style>
 
     <!-- Countdown Overlay -->
-    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#D91A2030"/>
-    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#66A8B3CF"/>
-    <SolidColorBrush x:Key="CountdownOverlayHighlight" Color="#4DFFFFFF"/>
-    <SolidColorBrush x:Key="CountdownOverlayShadow" Color="#80000000"/>
-    <SolidColorBrush x:Key="CountdownOverlayText" Color="#F4F7FB"/>
-    <SolidColorBrush x:Key="CountdownOverlayIcon" Color="#C9D2E3"/>
-    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#BF0B7A55"/>
-    <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#10B981"/>
+    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#E0121824"/>
+    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#55E2E8F0"/>
+    <SolidColorBrush x:Key="CountdownOverlayHighlight" Color="#35FFFFFF"/>
+    <SolidColorBrush x:Key="CountdownOverlayShadow" Color="#C0000000"/>
+    <SolidColorBrush x:Key="CountdownOverlayText" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="CountdownOverlayIcon" Color="#A8B9D4"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#D0149A6E"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#34D399"/>
     <SolidColorBrush x:Key="CountdownOverlaySuccessText" Color="#6EE7B7"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#BFA33434"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#EF4444"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailText" Color="#FCA5A5"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#D0B91C1C"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#F87171"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailText" Color="#FECACA"/>
+    <LinearGradientBrush x:Key="CountdownOverlayRingGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#664F46E5" Offset="0"/>
+        <GradientStop Color="#330EA5E9" Offset="0.45"/>
+        <GradientStop Color="#6638BDF8" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CountdownOverlayInnerSheen" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#22FFFFFF" Offset="0"/>
+        <GradientStop Color="#00FFFFFF" Offset="0.55"/>
+    </LinearGradientBrush>
 
     <!-- Separator -->
     <Style TargetType="Separator">

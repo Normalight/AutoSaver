@@ -392,18 +392,27 @@
     </Style>
 
     <!-- Countdown Overlay -->
-    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#EAF8FAFC"/>
-    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#99CBD5E1"/>
-    <SolidColorBrush x:Key="CountdownOverlayHighlight" Color="#CCFFFFFF"/>
-    <SolidColorBrush x:Key="CountdownOverlayShadow" Color="#330F172A"/>
-    <SolidColorBrush x:Key="CountdownOverlayText" Color="#243041"/>
-    <SolidColorBrush x:Key="CountdownOverlayIcon" Color="#6B7280"/>
-    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#CCDCFCE7"/>
-    <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#10B981"/>
+    <SolidColorBrush x:Key="CountdownOverlayBg" Color="#F5FFFFFF"/>
+    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#90CBD5E1"/>
+    <SolidColorBrush x:Key="CountdownOverlayHighlight" Color="#EEFFFFFF"/>
+    <SolidColorBrush x:Key="CountdownOverlayShadow" Color="#280F172A"/>
+    <SolidColorBrush x:Key="CountdownOverlayText" Color="#1E293B"/>
+    <SolidColorBrush x:Key="CountdownOverlayIcon" Color="#64748B"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#E0DCFCE7"/>
+    <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#059669"/>
     <SolidColorBrush x:Key="CountdownOverlaySuccessText" Color="#047857"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#CCFEE2E2"/>
-    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#EF4444"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBg" Color="#E0FEE2E2"/>
+    <SolidColorBrush x:Key="CountdownOverlayFailBorder" Color="#DC2626"/>
     <SolidColorBrush x:Key="CountdownOverlayFailText" Color="#B91C1C"/>
+    <LinearGradientBrush x:Key="CountdownOverlayRingGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#99BFDBFE" Offset="0"/>
+        <GradientStop Color="#5593C5FD" Offset="0.5"/>
+        <GradientStop Color="#99C4B5FD" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CountdownOverlayInnerSheen" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#66FFFFFF" Offset="0"/>
+        <GradientStop Color="#00FFFFFF" Offset="0.5"/>
+    </LinearGradientBrush>
 
     <!-- Separator -->
     <Style TargetType="Separator">

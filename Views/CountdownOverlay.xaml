@@ -3,83 +3,114 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Topmost="True"
         ShowActivated="False" ShowInTaskbar="False"
-        Height="44" Width="132"
+        Height="72" Width="176"
         WindowStartupLocation="Manual"
         Background="Transparent"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display"
-        TextOptions.TextRenderingMode="Grayscale"
+        TextOptions.TextRenderingMode="ClearType"
         MouseLeftButtonDown="OnDragStart">
 
-    <Grid Margin="4" UseLayoutRounding="True" SnapsToDevicePixels="True">
-        <Border CornerRadius="18"
+    <Grid x:Name="RootChrome"
+          Margin="10"
+          RenderTransformOrigin="0.5,0.5"
+          UseLayoutRounding="True"
+          SnapsToDevicePixels="True">
+        <Grid.RenderTransform>
+            <ScaleTransform ScaleX="1" ScaleY="1"/>
+        </Grid.RenderTransform>
+
+        <!-- Ambient shadow -->
+        <Border CornerRadius="24"
                 Background="Transparent"
-                SnapsToDevicePixels="True">
+                SnapsToDevicePixels="True"
+                IsHitTestVisible="False">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="4"
+                <DropShadowEffect BlurRadius="22"
                                   ShadowDepth="0"
                                   Direction="270"
-                                  Opacity="0.18"
+                                  Opacity="0.35"
                                   Color="#000000"/>
             </Border.Effect>
         </Border>
 
-        <Border x:Name="GlassBorder"
-                CornerRadius="18"
-                Background="{DynamicResource CountdownOverlayBg}"
-                BorderBrush="{DynamicResource CountdownOverlayBorder}"
-                BorderThickness="1"
-                Padding="15,0"
-                UseLayoutRounding="True"
+        <!-- Gradient ring frame -->
+        <Border CornerRadius="24"
+                Padding="1.5"
+                Background="{DynamicResource CountdownOverlayRingGradient}"
                 SnapsToDevicePixels="True">
-            <Border.CacheMode>
-                <BitmapCache RenderAtScale="1"/>
-            </Border.CacheMode>
 
-            <Grid ClipToBounds="True">
-                <Border CornerRadius="17"
-                        Height="15"
-                        VerticalAlignment="Top"
-                        Margin="1"
-                        Background="{DynamicResource CountdownOverlayHighlight}"
-                        Opacity="0.32"
-                        IsHitTestVisible="False"/>
+            <Border x:Name="GlassBorder"
+                    CornerRadius="22.5"
+                    Background="{DynamicResource CountdownOverlayBg}"
+                    BorderBrush="{DynamicResource CountdownOverlayBorder}"
+                    BorderThickness="1"
+                    Padding="14,0,16,0"
+                    UseLayoutRounding="True"
+                    SnapsToDevicePixels="True">
+                <Grid ClipToBounds="True">
+                    <!-- Top glass sheen -->
+                    <Border VerticalAlignment="Top"
+                            Height="26"
+                            Margin="2,2,2,0"
+                            CornerRadius="18,18,6,6"
+                            Background="{DynamicResource CountdownOverlayInnerSheen}"
+                            IsHitTestVisible="False"/>
 
-                <Border x:Name="FlashLayer"
-                        CornerRadius="16"
-                        Background="Transparent"
-                        Opacity="0"
-                        Margin="1"
-                        IsHitTestVisible="False"/>
+                    <Border x:Name="FlashLayer"
+                            CornerRadius="21"
+                            Background="Transparent"
+                            Opacity="0"
+                            Margin="1"
+                            IsHitTestVisible="False"/>
 
-                <StackPanel x:Name="ContentPanel"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            RenderTransformOrigin="0.5,0.5">
-                    <Path Data="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
-                          Stroke="{DynamicResource CountdownOverlayIcon}"
-                          StrokeThickness="1.45"
-                          StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round"
-                          StrokeLineJoin="Round"
-                          Width="12"
-                          Height="12"
-                          Stretch="Uniform"
+                    <Grid x:Name="ContentPanel"
+                          HorizontalAlignment="Center"
                           VerticalAlignment="Center"
-                          Margin="0,0,7,0"
-                          Opacity="0.82"
-                          SnapsToDevicePixels="True"/>
-                    <TextBlock x:Name="CountdownText"
-                               Text="30s"
-                               FontSize="13"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource CountdownOverlayText}"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
+                          RenderTransformOrigin="0.5,0.5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="Auto" MinWidth="52"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0"
+                                Width="16"
+                                Height="16"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                CornerRadius="8"
+                                Background="{DynamicResource CountdownOverlayHighlight}"
+                                Opacity="0.35"
+                                IsHitTestVisible="False"/>
+
+                        <Path Grid.Column="0"
+                              Data="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
+                              Stroke="{DynamicResource CountdownOverlayIcon}"
+                              StrokeThickness="1.5"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round"
+                              Width="13"
+                              Height="13"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Opacity="0.92"
+                              SnapsToDevicePixels="True"/>
+
+                        <TextBlock Grid.Column="1"
+                                   x:Name="CountdownText"
+                                   Text="30s"
+                                   TextAlignment="Center"
+                                   FontSize="14.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource CountdownOverlayText}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Grid>
+            </Border>
         </Border>
     </Grid>
 </Window>

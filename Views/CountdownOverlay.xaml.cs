@@ -61,39 +61,61 @@ namespace AutoSaver.Views
             FlashLayer.Background = flashBrush;
             FlashLayer.BeginAnimation(OpacityProperty, null);
 
-            var opacityAnimation = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(800) };
+            var opacityAnimation = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(760) };
             opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0.58, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150)))
+            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(success ? 0.42 : 0.38, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(130)))
                 { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800)))
-                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+            opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(760)))
+                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } });
             FlashLayer.BeginAnimation(OpacityProperty, opacityAnimation);
 
             ContentPanel.RenderTransformOrigin = new Point(0.5, 0.5);
+            var transformGroup = new TransformGroup();
+            var scaleTransform = new ScaleTransform(1, 1);
+            var translateTransform = new TranslateTransform(0, 0);
+            transformGroup.Children.Add(scaleTransform);
+            transformGroup.Children.Add(translateTransform);
+            ContentPanel.RenderTransform = transformGroup;
+
             if (success)
             {
-                var scale = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(400) };
+                var scale = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(420) };
                 scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.18, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)))
+                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.12, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)))
+                    { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.25 } });
+                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(420)))
                     { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-                scale.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(400)))
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
+
+                var lift = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(420) };
+                lift.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                lift.KeyFrames.Add(new EasingDoubleKeyFrame(-1.5, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)))
                     { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-                var transform = new ScaleTransform(1, 1);
-                ContentPanel.RenderTransform = transform;
-                transform.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
-                transform.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
+                lift.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(420)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                translateTransform.BeginAnimation(TranslateTransform.YProperty, lift);
             }
             else
             {
-                var shake = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(300) };
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(60))));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(-2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120))));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(180))));
-                shake.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(240))));
-                var transform = new TranslateTransform(0, 0);
-                ContentPanel.RenderTransform = transform;
-                transform.BeginAnimation(TranslateTransform.XProperty, shake);
+                var drift = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(360) };
+                drift.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                drift.KeyFrames.Add(new EasingDoubleKeyFrame(1.6, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(80)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                drift.KeyFrames.Add(new EasingDoubleKeyFrame(-1.2, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(170)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } });
+                drift.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(360)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                translateTransform.BeginAnimation(TranslateTransform.XProperty, drift);
+
+                var settle = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(360) };
+                settle.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                settle.KeyFrames.Add(new EasingDoubleKeyFrame(0.96, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(90)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                settle.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(360)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, settle);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, settle);
             }
 
             _animationTimer?.Stop();
@@ -122,22 +144,56 @@ namespace AutoSaver.Views
             {
                 BeginAnimation(OpacityProperty, null);
                 Opacity = 0;
-                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200))
+
+                RootChrome.RenderTransformOrigin = new Point(0.5, 0.5);
+                var scale = RootChrome.RenderTransform as ScaleTransform ?? new ScaleTransform(1, 1);
+                if (!(RootChrome.RenderTransform is ScaleTransform))
+                    RootChrome.RenderTransform = scale;
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                scale.ScaleX = 0.88;
+                scale.ScaleY = 0.88;
+
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(320))
                 {
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                 };
                 BeginAnimation(OpacityProperty, fadeIn);
+
+                var scaleOut = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(380) };
+                scaleOut.KeyFrames.Add(new EasingDoubleKeyFrame(0.88, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                scaleOut.KeyFrames.Add(new EasingDoubleKeyFrame(1.03, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(140)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                scaleOut.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(380)))
+                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleOut);
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleOut);
             }), DispatcherPriority.Render);
         }
 
         public void HideAnimated()
         {
-            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150))
+            RootChrome.RenderTransformOrigin = new Point(0.5, 0.5);
+            var scale = RootChrome.RenderTransform as ScaleTransform ?? new ScaleTransform(1, 1);
+            if (!(RootChrome.RenderTransform is ScaleTransform))
+                RootChrome.RenderTransform = scale;
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(220))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
             fadeOut.Completed += (s, e) => Hide();
+
+            var scaleIn = new DoubleAnimation(1.0, 0.94, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+
             BeginAnimation(OpacityProperty, fadeOut);
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleIn);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleIn);
         }
 
         public void ValidatePosition()
