@@ -32,26 +32,6 @@ namespace AutoSaver.Views
             RefreshList();
         }
 
-        /// <summary>Shows countdown for the monitored program that currently has keyboard foreground.</summary>
-        public void UpdateFocusCountdown(FocusCountdownSnapshot snap)
-        {
-            if (!snap.ShowCapsule)
-            {
-                CountdownCapsule.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            CountdownCapsule.Visibility = Visibility.Visible;
-            var sec = Math.Max(0, snap.RemainingSec);
-            var timeStr = sec >= 60
-                ? $"{sec / 60}m {sec % 60:D2}s"
-                : $"{sec}s";
-
-            CountdownLabel.Text = string.IsNullOrWhiteSpace(snap.ProgramDisplayName)
-                ? timeStr
-                : $"{snap.ProgramDisplayName} · {timeStr}";
-        }
-
         public MainWindow(List<ProgramItem> programs)
         {
             InitializeComponent();
