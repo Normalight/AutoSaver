@@ -36,6 +36,9 @@ namespace AutoSaver.Views
             TrayCloseCheck.IsChecked = ConfigService.MinimizeToTrayOnClose;
             NotifyCheck.IsChecked = ConfigService.ShowNotifications;
             CheckUpdatesCheck.IsChecked = ConfigService.CheckUpdatesOnStartup;
+            CountdownCheck.IsChecked = ConfigService.ShowCountdownOverlay;
+            SaveAnimCheck.IsChecked = ConfigService.ShowSaveAnimation;
+            ErrorThresholdBox.Text = ConfigService.ErrorThreshold.ToString();
         }
 
         private void UpdateThemeButtons()
@@ -101,6 +104,18 @@ namespace AutoSaver.Views
 
             ThemeService.CurrentTheme = _selectedTheme;
             ConfigService.CheckIntervalSec = intervalSec;
+
+            ConfigService.ShowCountdownOverlay = CountdownCheck.IsChecked == true;
+            ConfigService.ShowSaveAnimation = SaveAnimCheck.IsChecked == true;
+
+            if (!int.TryParse(ErrorThresholdBox.Text, out var threshold) || threshold < 1)
+            {
+                MessageBox.Show("连续失败阈值必须为大于 0 的整数。", "提示",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            ConfigService.ErrorThreshold = threshold;
+
             ConfigService.StartWithWindows = StartupCheck.IsChecked == true;
             ConfigService.MinimizeToTrayOnClose = TrayCloseCheck.IsChecked == true;
             ConfigService.ShowNotifications = NotifyCheck.IsChecked == true;
