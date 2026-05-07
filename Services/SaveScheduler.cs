@@ -11,7 +11,7 @@ using Timer = System.Timers.Timer;
 
 namespace AutoSaver.Services
 {
-    public enum SaveStatus { Success, NeedsConfirm, Failed }
+    public enum SaveStatus { Success, Failed }
 
     public readonly struct FocusCountdownSnapshot
     {
@@ -52,6 +52,7 @@ namespace AutoSaver.Services
         public SaveStatus Status { get; set; }
         public string Message { get; set; }
         public int WindowCount { get; set; }
+        public bool IsPersistentAlert { get; set; }
         public Action JumpAction { get; set; }
     }
 
@@ -72,6 +73,7 @@ namespace AutoSaver.Services
         private IntPtr _slotHwnd = IntPtr.Zero;
         private string _slotProgramId;
         private int _slotRemainingSec;
+        private readonly Dictionary<string, int> _consecutiveFailures = new Dictionary<string, int>();
 
         public event Action<string, string, int> SaveDone;
         public event Action<SaveResult> SaveCompleted;
@@ -324,6 +326,25 @@ namespace AutoSaver.Services
             return list;
         }
 
+        private void ResetConsecutiveFailures(string programId)
+        {
+            lock (_lock)
+            {
+                _consecutiveFailures.Remove(programId);
+            }
+        }
+
+        private bool IncrementFailureAndCheckThreshold(string programId)
+        {
+            lock (_lock)
+            {
+                if (!_consecutiveFailures.ContainsKey(programId))
+                    _consecutiveFailures[programId] = 0;
+                _consecutiveFailures[programId]++;
+                return _consecutiveFailures[programId] >= ConfigService.ErrorThreshold;
+            }
+        }
+
         private void QueueSaveWindow(ProgramItem prog, IntPtr expectedHwnd)
         {
             var progRef = prog;
@@ -352,56 +373,42 @@ namespace AutoSaver.Services
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
 
-            if (!IsForegroundStillMatchingSave(prog, expectedHwnd, out var hwnd))
+            if (!IsForegroundStillMatch(prog, expectedHwnd))
                 return;
 
-            var before = WindowService.GetWindowCountByExe(prog.Exe);
-            if (before == 0)
+            var sent = WindowService.SendCtrlS(expectedHwnd);
+
+            SaveDone?.Invoke(prog.Id, timestamp, 1);
+
+            if (sent)
             {
-                SaveDone?.Invoke(prog.Id, timestamp, 0);
-                return;
-            }
-
-            // 队列异步执行到这里时焦点可能已变：不一致则本次作废（不落日志、不发通知），下一轮倒计时再试。
-            if (!IsForegroundStillMatchingSave(prog, expectedHwnd, out hwnd))
-                return;
-
-            WindowService.SendCtrlSToWindows(new List<IntPtr> { hwnd });
-
-            await Task.Delay(350).ConfigureAwait(false);
-
-            var after = WindowService.GetWindowCountByExe(prog.Exe);
-
-            if (after > before)
-            {
-                SaveDone?.Invoke(prog.Id, timestamp, 1);
+                ResetConsecutiveFailures(prog.Id);
                 SaveCompleted?.Invoke(new SaveResult
                 {
                     Program = prog,
-                    Status = SaveStatus.NeedsConfirm,
-                    Message = "检测到保存对话框，请手动选择保存位置",
-                    WindowCount = 1,
-                    JumpAction = null
+                    Status = SaveStatus.Success,
+                    Message = "已向前台窗口发送 Ctrl+S",
+                    IsPersistentAlert = false
                 });
-                return;
             }
-
-            SaveDone?.Invoke(prog.Id, timestamp, 1);
-            SaveCompleted?.Invoke(new SaveResult
+            else
             {
-                Program = prog,
-                Status = SaveStatus.Success,
-                Message = "已向前台窗口发送 Ctrl+S（是否写入文件由目标程序决定）",
-                WindowCount = 1
-            });
+                var isThreshold = IncrementFailureAndCheckThreshold(prog.Id);
+                SaveCompleted?.Invoke(new SaveResult
+                {
+                    Program = prog,
+                    Status = SaveStatus.Failed,
+                    Message = "发送 Ctrl+S 失败",
+                    IsPersistentAlert = isThreshold
+                });
+            }
         }
 
-        private static bool IsForegroundStillMatchingSave(ProgramItem prog, IntPtr expectedHwnd, out IntPtr hwnd)
+        private static bool IsForegroundStillMatch(ProgramItem prog, IntPtr expectedHwnd)
         {
-            hwnd = IntPtr.Zero;
             if (WindowService.GetForegroundWindowHandle() != expectedHwnd)
                 return false;
-            if (!WindowService.TryMatchForegroundExe(prog.Exe, out hwnd))
+            if (!WindowService.TryMatchForegroundExe(prog.Exe, out var hwnd))
                 return false;
             return hwnd == expectedHwnd;
         }
