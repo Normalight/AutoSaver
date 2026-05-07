@@ -393,8 +393,8 @@
 
     <!-- Countdown Overlay -->
     <SolidColorBrush x:Key="CountdownOverlayBg" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#DDE3EA"/>
-    <SolidColorBrush x:Key="CountdownOverlayText" Color="#111827"/>
+    <SolidColorBrush x:Key="CountdownOverlayBorder" Color="#D1D5DB"/>
+    <SolidColorBrush x:Key="CountdownOverlayText" Color="#374151"/>
     <SolidColorBrush x:Key="CountdownOverlaySuccessBg" Color="#D1FAE5"/>
     <SolidColorBrush x:Key="CountdownOverlaySuccessBorder" Color="#10B981"/>
     <SolidColorBrush x:Key="CountdownOverlaySuccessText" Color="#059669"/>

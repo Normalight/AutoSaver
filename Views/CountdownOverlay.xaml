@@ -3,23 +3,28 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Topmost="True"
         ShowActivated="False" ShowInTaskbar="False"
-        Height="34" Width="72"
+        Height="40" Width="120"
         WindowStartupLocation="Manual"
         Background="Transparent"
         MouseLeftButtonDown="OnDragStart">
 
-    <Border x:Name="CapsuleBorder" CornerRadius="999" Padding="12,0"
+    <Border x:Name="CapsuleBorder" CornerRadius="10" Padding="14,0"
             Background="{DynamicResource CountdownOverlayBg}"
             BorderBrush="{DynamicResource CountdownOverlayBorder}" BorderThickness="1">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.25"/>
+            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.2"/>
         </Border.Effect>
-        <Grid>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Path Data="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
+                  Stroke="{DynamicResource CountdownOverlayText}" StrokeThickness="1.4"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Width="11" Height="11" Stretch="Uniform" VerticalAlignment="Center"
+                  Margin="0,0,6,0" Opacity="0.6"/>
             <TextBlock x:Name="CountdownText"
                        Text="30s"
                        FontSize="13" FontWeight="SemiBold"
                        Foreground="{DynamicResource CountdownOverlayText}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Grid>
+        </StackPanel>
     </Border>
 </Window>
