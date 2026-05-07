@@ -1,0 +1,25 @@
+<Window x:Class="AutoSaver.Views.CountdownOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Topmost="True"
+        ShowActivated="False" ShowInTaskbar="False"
+        Height="34" Width="72"
+        WindowStartupLocation="Manual"
+        Background="Transparent"
+        MouseLeftButtonDown="OnDragStart">
+
+    <Border x:Name="CapsuleBorder" CornerRadius="999" Padding="12,0"
+            Background="{DynamicResource CountdownOverlayBg}"
+            BorderBrush="{DynamicResource CountdownOverlayBorder}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.25"/>
+        </Border.Effect>
+        <Grid>
+            <TextBlock x:Name="CountdownText"
+                       Text="30s"
+                       FontSize="13" FontWeight="SemiBold"
+                       Foreground="{DynamicResource CountdownOverlayText}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </Border>
+</Window>
