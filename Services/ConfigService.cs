@@ -127,6 +127,48 @@ namespace AutoSaver.Services
             set => Write("global", "check_updates_on_startup", value ? "true" : "false");
         }
 
+        public static bool ShowCountdownOverlay
+        {
+            get => Read("global", "show_countdown_overlay", "true") != "false";
+            set => Write("global", "show_countdown_overlay", value ? "true" : "false");
+        }
+
+        public static bool ShowSaveAnimation
+        {
+            get => Read("global", "show_save_animation", "true") != "false";
+            set => Write("global", "show_save_animation", value ? "true" : "false");
+        }
+
+        public static int ErrorThreshold
+        {
+            get
+            {
+                var v = Read("global", "error_threshold", "3");
+                return int.TryParse(v, out var n) && n > 0 ? n : 3;
+            }
+            set => Write("global", "error_threshold", value.ToString());
+        }
+
+        public static double CountdownX
+        {
+            get
+            {
+                var v = Read("global", "countdown_x", "");
+                return double.TryParse(v, out var d) ? d : double.NaN;
+            }
+            set => Write("global", "countdown_x", value.ToString("F0"));
+        }
+
+        public static double CountdownY
+        {
+            get
+            {
+                var v = Read("global", "countdown_y", "");
+                return double.TryParse(v, out var d) ? d : double.NaN;
+            }
+            set => Write("global", "countdown_y", value.ToString("F0"));
+        }
+
         public static string AppVersion
         {
             get => Read("meta", "version", "");
@@ -172,6 +214,9 @@ namespace AutoSaver.Services
                     Write("global", "minimize_to_tray_on_close", "true");
                     Write("global", "show_notifications", "true");
                     Write("global", "check_updates_on_startup", "true");
+                    Write("global", "show_countdown_overlay", "true");
+                    Write("global", "show_save_animation", "true");
+                    Write("global", "error_threshold", "3");
                 }
             }
 
